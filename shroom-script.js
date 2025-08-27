@@ -739,13 +739,26 @@ async function uploadFiles(files) {
     
     // Show success message
     if (files.length === 1) {
-        showToast('File uploaded successfully!', 'success');
+        showToast('File uploaded successfully! Redirecting to My Files...', 'success');
     } else {
-        showToast(`${files.length} files uploaded successfully!`, 'success');
+        showToast(`${files.length} files uploaded successfully! Redirecting to My Files...`, 'success');
     }
     
     // Reload files to show the new uploads
     loadFiles();
+    
+    // Automatically navigate to My Files page
+    setTimeout(() => {
+        switchSection('files');
+        // Update navigation button state
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        const filesBtn = document.querySelector('[onclick="switchSection(\'files\')"]');
+        if (filesBtn) {
+            filesBtn.classList.add('active');
+        }
+    }, 1500); // Wait 1.5 seconds to show the success message
 }
 
 // Upload single file
@@ -762,10 +775,16 @@ async function uploadFile(file, currentIndex = 0, totalFiles = 1) {
         // Update progress for current file
         updateUploadProgress(file, currentIndex, totalFiles);
         
+        // Update progress text to show current step
+        updateUploadStep('Preparing file...');
+        
         const timestamp = Date.now();
         const randomId = Math.random().toString(36).substring(2, 12);
         const fileExtension = file.name.split('.').pop();
         const fileName = `${timestamp}_${randomId}.${fileExtension}`;
+        
+        // Update progress to show uploading
+        updateUploadStep('Uploading to cloud storage...');
         
         // Upload file to Supabase Storage
         const { data: uploadData, error: uploadError } = await window.supabase.storage
@@ -774,6 +793,9 @@ async function uploadFile(file, currentIndex = 0, totalFiles = 1) {
 
         if (uploadError) throw uploadError;
 
+        // Update progress to show processing
+        updateUploadStep('Processing file...');
+        
         // Get public URL
         const { data: urlData } = window.supabase.storage
             .from('uploads')
@@ -799,6 +821,9 @@ async function uploadFile(file, currentIndex = 0, totalFiles = 1) {
 
         if (insertError) throw insertError;
 
+        // Update progress to show completion
+        updateUploadStep('File uploaded successfully!');
+        
         return insertData[0];
     } catch (error) {
         console.error('Upload error:', error);
@@ -812,6 +837,9 @@ function showUploadProgress() {
     const progressBar = document.getElementById('uploadProgress');
     if (progressBar) {
         progressBar.style.display = 'block';
+        // Reset progress
+        updateUploadProgress(null, 0, 1);
+        updateUploadStep('Starting upload...');
     }
 }
 
@@ -832,24 +860,50 @@ function updateUploadProgress(file, currentIndex, totalFiles) {
     const progressText = document.getElementById('uploadFileName');
     const progressSize = document.getElementById('uploadFileSize');
     const progressPercent = document.querySelector('.progress-text');
+    const progressHeader = document.querySelector('.progress-header h4');
     
-    if (!progressBar || !progressFill || !progressText || !progressSize || !progressPercent) return;
+    if (!progressBar || !progressFill || !progressText || !progressSize || !progressPercent || !progressHeader) return;
     
     if (file) {
         // Update file info
         progressText.textContent = file.name;
         progressSize.textContent = fileUtils.formatFileSize(file.size);
         
+        // Update header to show current file progress
+        if (totalFiles > 1) {
+            progressHeader.textContent = `Uploading Files (${currentIndex + 1} of ${totalFiles})`;
+        } else {
+            progressHeader.textContent = 'Uploading File';
+        }
+        
         // Calculate and update progress percentage
         const progress = ((currentIndex + 1) / totalFiles) * 100;
         progressFill.style.width = `${progress}%`;
         progressPercent.textContent = `${Math.round(progress)}%`;
+        
+        // Add animation to progress bar
+        progressFill.style.transition = 'width 0.3s ease';
+        
+        // Add shimmer effect to progress bar
+        progressFill.style.background = 'linear-gradient(90deg, #ff6b35, #f7931e, #ff6b35)';
+        progressFill.style.backgroundSize = '200% 100%';
+        progressFill.style.animation = 'shimmer 2s infinite';
     } else {
         // Reset progress
         progressFill.style.width = '0%';
         progressPercent.textContent = '0%';
         progressText.textContent = 'filename.ext';
         progressSize.textContent = '0 KB';
+        progressHeader.textContent = 'Uploading Files';
+        progressFill.style.animation = 'none';
+    }
+}
+
+// Update upload step text
+function updateUploadStep(stepText) {
+    const progressText = document.getElementById('uploadFileName');
+    if (progressText) {
+        progressText.textContent = stepText;
     }
 }
 
