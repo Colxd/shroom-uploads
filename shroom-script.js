@@ -348,7 +348,17 @@ async function handleSharedFile() {
 
         if (files && files.length > 0) {
             const sharedFile = files[0];
-            showSharedFileModal(sharedFile);
+            
+            // Check if user is logged in
+            const { data: { user } } = await window.supabase.auth.getUser();
+            
+            if (user) {
+                // User is logged in, show modal
+                showSharedFileModal(sharedFile);
+            } else {
+                // User is not logged in, show simple download page
+                showSharedFileDownloadPage(sharedFile);
+            }
         } else {
             showToast('Shared file not found', 'error');
         }
@@ -390,6 +400,54 @@ function showSharedFileModal(file) {
     }
     
     modal.style.display = 'flex';
+}
+
+// Show shared file download page for non-logged-in users
+function showSharedFileDownloadPage(file) {
+    // Hide all sections
+    document.querySelectorAll('.section').forEach(section => {
+        section.classList.remove('active');
+    });
+    
+    // Create or update the shared file download section
+    let sharedSection = document.getElementById('sharedFileSection');
+    if (!sharedSection) {
+        sharedSection = document.createElement('div');
+        sharedSection.id = 'sharedFileSection';
+        sharedSection.className = 'section active';
+        document.querySelector('main').appendChild(sharedSection);
+    }
+    
+    sharedSection.innerHTML = `
+        <div class="shared-file-container">
+            <div class="shared-file-card">
+                <div class="shared-file-header">
+                    <div class="shared-file-icon">
+                        <i class="${fileUtils.getFileIcon(file.type)}"></i>
+                    </div>
+                    <div class="shared-file-info">
+                        <h2>${file.original_name}</h2>
+                        <p>${fileUtils.formatFileSize(file.size)} • ${file.type}</p>
+                        <p class="shared-file-date">Uploaded: ${new Date(file.upload_date).toLocaleDateString()}</p>
+                    </div>
+                </div>
+                <div class="shared-file-actions">
+                    <button class="action-btn primary download-btn" onclick="downloadSharedFile(${JSON.stringify(file).replace(/"/g, '&quot;')})">
+                        <i class="fas fa-download"></i>
+                        Download File
+                    </button>
+                    ${fileUtils.isArchive({ name: file.original_name, type: file.type }) ? 
+                        `<button class="action-btn secondary" onclick="openArchiveContents(${file.id})">
+                            <i class="fas fa-archive"></i>
+                            View Contents
+                        </button>` : ''
+                    }
+                </div>
+            </div>
+        </div>
+    `;
+    
+    sharedSection.classList.add('active');
 }
 
 // Download shared file
@@ -883,7 +941,7 @@ function hideUploadProgress() {
 }
 
 // Update upload progress
-function updateUploadProgress(file, currentIndex, totalFiles) {
+function updateUploadProgress(file, currentIndex, totalFiles, uploadProgress = 0) {
     const progressBar = document.getElementById('uploadProgress');
     const progressFill = document.getElementById('progressFill');
     const progressText = document.getElementById('uploadFileName');
@@ -905,8 +963,15 @@ function updateUploadProgress(file, currentIndex, totalFiles) {
             progressHeader.textContent = 'Uploading File';
         }
         
-        // Calculate progress percentage
-        const progress = totalFiles > 0 ? ((currentIndex + 1) / totalFiles) * 100 : 0;
+        // Calculate progress percentage based on actual upload progress
+        let progress = 0;
+        if (uploadProgress > 0) {
+            // If we have actual upload progress, use it
+            progress = uploadProgress;
+        } else {
+            // Otherwise, show file preparation progress (0-50%)
+            progress = Math.min(50, (currentIndex / totalFiles) * 50);
+        }
         
         // Start with 0% and animate to current progress
         progressFill.style.width = '0%';
