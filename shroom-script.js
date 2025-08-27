@@ -5,6 +5,27 @@ let isBulkSelectMode = false;
 let currentUser = null;
 let pendingRegistration = null; // Store registration data for auto-login
 
+// Global error handler to ensure all errors show as toasts in top right
+window.addEventListener('error', function(event) {
+    showToast('An error occurred: ' + (event.error?.message || event.message || 'Unknown error'), 'error');
+});
+
+// Global unhandled promise rejection handler
+window.addEventListener('unhandledrejection', function(event) {
+    showToast('An error occurred: ' + (event.reason?.message || 'Unknown error'), 'error');
+});
+
+// Intercept console errors and show them as toasts
+const originalConsoleError = console.error;
+console.error = function(...args) {
+    originalConsoleError.apply(console, args);
+    const errorMessage = args.map(arg => 
+        typeof arg === 'string' ? arg : 
+        arg?.message || arg?.toString() || 'Unknown error'
+    ).join(' ');
+    showToast('Error: ' + errorMessage, 'error');
+};
+
 // Authentication functions
 const auth = {
     async signUp(email, password, name) {
@@ -963,15 +984,56 @@ function renderFiles(filesToRender = currentFiles) {
 function updateStats() {
     const totalFiles = currentFiles.length;
     const totalStorage = currentFiles.reduce((sum, file) => sum + file.size, 0);
+    const totalDownloads = currentFiles.reduce((sum, file) => sum + (file.download_count || 0), 0);
+    const sharedFiles = currentFiles.filter(file => file.share_id).length;
     
-    // Update storage display
-    document.getElementById('storageUsed').textContent = fileUtils.formatFileSize(totalStorage);
-    const storagePercent = Math.min((totalStorage / (100 * 1024 * 1024)) * 100, 100);
-    document.getElementById('storageFill').style.width = `${storagePercent}%`;
+    // Update storage display (if elements exist)
+    const storageUsedElement = document.getElementById('storageUsed');
+    const storageFillElement = document.getElementById('storageFill');
     
-    // Update stats cards
-    document.getElementById('totalFiles').textContent = totalFiles;
-    document.getElementById('totalStorage').textContent = fileUtils.formatFileSize(totalStorage);
+    if (storageUsedElement) {
+        storageUsedElement.textContent = fileUtils.formatFileSize(totalStorage);
+    }
+    
+    if (storageFillElement) {
+        const storagePercent = Math.min((totalStorage / (100 * 1024 * 1024)) * 100, 100);
+        storageFillElement.style.width = `${storagePercent}%`;
+    }
+    
+    // Update stats storage usage elements
+    const statsStorageUsedElement = document.getElementById('statsStorageUsed');
+    const statsStorageFillElement = document.getElementById('statsStorageFill');
+    
+    if (statsStorageUsedElement) {
+        statsStorageUsedElement.textContent = fileUtils.formatFileSize(totalStorage);
+    }
+    
+    if (statsStorageFillElement) {
+        const storagePercent = Math.min((totalStorage / (100 * 1024 * 1024)) * 100, 100);
+        statsStorageFillElement.style.width = `${storagePercent}%`;
+    }
+    
+    // Update stats cards (with null checks)
+    const totalFilesElement = document.getElementById('totalFiles');
+    const totalStorageElement = document.getElementById('totalStorage');
+    const totalDownloadsElement = document.getElementById('totalDownloads');
+    const totalSharesElement = document.getElementById('totalShares');
+    
+    if (totalFilesElement) {
+        totalFilesElement.textContent = totalFiles;
+    }
+    
+    if (totalStorageElement) {
+        totalStorageElement.textContent = fileUtils.formatFileSize(totalStorage);
+    }
+    
+    if (totalDownloadsElement) {
+        totalDownloadsElement.textContent = totalDownloads;
+    }
+    
+    if (totalSharesElement) {
+        totalSharesElement.textContent = sharedFiles;
+    }
     
     // Update recent files
     const recentFiles = currentFiles.slice(0, 5);
@@ -1238,26 +1300,89 @@ function manualLoadFiles() {
     loadFiles();
 }
 
-function showToast(message, type = 'info') {
+function showToast(message, type = 'info', title = null, duration = 5000) {
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
+    
+    // Get appropriate icon for each type
+    const getIcon = (type) => {
+        switch(type) {
+            case 'success': return 'fas fa-check-circle';
+            case 'error': return 'fas fa-exclamation-circle';
+            case 'warning': return 'fas fa-exclamation-triangle';
+            case 'info': 
+            default: return 'fas fa-info-circle';
+        }
+    };
+    
+    // Get appropriate title if not provided
+    const getTitle = (type) => {
+        if (title) return title;
+        switch(type) {
+            case 'success': return 'Success!';
+            case 'error': return 'Error!';
+            case 'warning': return 'Warning!';
+            case 'info': 
+            default: return 'Info';
+        }
+    };
+    
     toast.innerHTML = `
         <div class="toast-icon">
-            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+            <i class="${getIcon(type)}"></i>
         </div>
-        <div class="toast-message">${message}</div>
+        <div class="toast-content">
+            <div class="toast-title">${getTitle(type)}</div>
+            <div class="toast-message">${message}</div>
+        </div>
         <button class="toast-close" onclick="this.parentElement.remove()">
             <i class="fas fa-times"></i>
         </button>
+        <div class="toast-progress">
+            <div class="toast-progress-fill" style="width: 100%"></div>
+        </div>
     `;
     
     document.body.appendChild(toast);
     
+    // Trigger animation
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 10);
+    
+    // Animate progress bar
+    const progressBar = toast.querySelector('.toast-progress-fill');
+    if (progressBar) {
+        setTimeout(() => {
+            progressBar.style.transition = `width ${duration}ms linear`;
+            progressBar.style.width = '0%';
+        }, 100);
+    }
+    
+    // Auto remove after duration
     setTimeout(() => {
         if (toast.parentElement) {
-            toast.remove();
+            toast.style.transform = 'translateX(400px)';
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.remove();
+                }
+            }, 400);
         }
-    }, 5000);
+    }, duration);
+    
+    // Add click to dismiss functionality
+    toast.addEventListener('click', (e) => {
+        if (e.target.classList.contains('toast-close')) return;
+        if (toast.parentElement) {
+            toast.style.transform = 'translateX(400px)';
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.remove();
+                }
+            }, 400);
+        }
+    });
 }
 
 // Redirect to login with pre-filled data
@@ -1317,6 +1442,11 @@ window.switchSection = function(sectionName) {
     const activeBtn = document.querySelector(`[onclick="switchSection('${sectionName}')"]`);
     if (activeBtn) {
         activeBtn.classList.add('active');
+    }
+    
+    // Update statistics when switching to stats section
+    if (sectionName === 'stats') {
+        updateStats();
     }
 };
 
