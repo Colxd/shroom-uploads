@@ -389,6 +389,7 @@ async function downloadSharedFile(file) {
 // Initialize the application
 async function initializeApp() {
     try {
+        console.log('Initializing app...');
         console.log('Supabase initialized:', window.supabase);
         
         // Check for email verification in URL (when user clicks verification link)
@@ -418,8 +419,11 @@ async function initializeApp() {
         
         // Check authentication status
         const user = await auth.getCurrentUser();
+        console.log('Auth check - user:', user);
+        
         if (user) {
             currentUser = user;
+            console.log('User is logged in:', user.email);
             if (user.email_confirmed_at) {
                 uiUtils.updateUIForUser();
             } else {
@@ -427,6 +431,7 @@ async function initializeApp() {
                 showVerificationPending(user.email);
             }
         } else {
+            console.log('No user logged in - showing guest UI');
             uiUtils.updateUIForGuest();
         }
         
@@ -444,10 +449,20 @@ async function initializeApp() {
 
 // Set up event listeners
 function setupEventListeners() {
+    console.log('Setting up event listeners...');
+    
     // File input change
     const fileInput = document.getElementById('fileInput');
+    console.log('File input found:', fileInput);
     if (fileInput) {
         fileInput.addEventListener('change', handleFileSelect);
+        console.log('File input event listener added');
+        
+        // Test if file input is accessible
+        console.log('File input accept attribute:', fileInput.accept);
+        console.log('File input multiple attribute:', fileInput.multiple);
+    } else {
+        console.error('File input not found!');
     }
 
     // Search input
@@ -469,6 +484,8 @@ function setupEventListeners() {
         uploadArea.addEventListener('drop', handleDrop);
         uploadArea.addEventListener('dragleave', handleDragLeave);
     }
+    
+
 
     // Clipboard paste
     document.addEventListener('paste', handlePaste);
@@ -495,6 +512,16 @@ function setupEventListeners() {
 // Event handlers
 function handleFileSelect(event) {
     const files = Array.from(event.target.files);
+    console.log('Files selected:', files.length, files.map(f => f.name));
+    
+    if (files.length > 0) {
+        console.log('First file details:', {
+            name: files[0].name,
+            size: files[0].size,
+            type: files[0].type
+        });
+    }
+    
     uploadFiles(files);
 }
 
@@ -681,20 +708,50 @@ const bulkUtils = {
 
 // Upload files
 async function uploadFiles(files) {
+    console.log('uploadFiles called with:', files.length, 'files');
+    console.log('Current user:', currentUser);
+    
     if (!currentUser) {
+        console.log('No user logged in - cannot upload files');
         showToast('Please sign in to upload files', 'error');
+        // Switch to account section to prompt login
+        switchSection('account');
         return;
     }
+    
+    console.log('User is authenticated, proceeding with upload...');
 
     if (files.length === 0) return;
 
+    // Show progress bar
+    showUploadProgress();
+    
+    let uploadedCount = 0;
+    const totalFiles = files.length;
+
     for (const file of files) {
-        await uploadFile(file);
+        await uploadFile(file, uploadedCount, totalFiles);
+        uploadedCount++;
     }
+
+    // Hide progress bar when done
+    hideUploadProgress();
+    
+    // Show success message
+    if (files.length === 1) {
+        showToast('File uploaded successfully!', 'success');
+    } else {
+        showToast(`${files.length} files uploaded successfully!`, 'success');
+    }
+    
+    // Reload files to show the new uploads
+    loadFiles();
 }
 
 // Upload single file
-async function uploadFile(file) {
+async function uploadFile(file, currentIndex = 0, totalFiles = 1) {
+    console.log('Uploading file:', file.name, 'Index:', currentIndex, 'Total:', totalFiles);
+    
     const validation = fileUtils.validateFile(file);
     if (!validation.valid) {
         showToast(validation.error, 'error');
@@ -702,6 +759,9 @@ async function uploadFile(file) {
     }
 
     try {
+        // Update progress for current file
+        updateUploadProgress(file, currentIndex, totalFiles);
+        
         const timestamp = Date.now();
         const randomId = Math.random().toString(36).substring(2, 12);
         const fileExtension = file.name.split('.').pop();
@@ -739,12 +799,57 @@ async function uploadFile(file) {
 
         if (insertError) throw insertError;
 
-        showToast('File uploaded successfully!', 'success');
         return insertData[0];
     } catch (error) {
         console.error('Upload error:', error);
         showToast('Upload failed: ' + error.message, 'error');
         return null;
+    }
+}
+
+// Show upload progress bar
+function showUploadProgress() {
+    const progressBar = document.getElementById('uploadProgress');
+    if (progressBar) {
+        progressBar.style.display = 'block';
+    }
+}
+
+// Hide upload progress bar
+function hideUploadProgress() {
+    const progressBar = document.getElementById('uploadProgress');
+    if (progressBar) {
+        progressBar.style.display = 'none';
+        // Reset progress
+        updateUploadProgress(null, 0, 1);
+    }
+}
+
+// Update upload progress
+function updateUploadProgress(file, currentIndex, totalFiles) {
+    const progressBar = document.getElementById('uploadProgress');
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('uploadFileName');
+    const progressSize = document.getElementById('uploadFileSize');
+    const progressPercent = document.querySelector('.progress-text');
+    
+    if (!progressBar || !progressFill || !progressText || !progressSize || !progressPercent) return;
+    
+    if (file) {
+        // Update file info
+        progressText.textContent = file.name;
+        progressSize.textContent = fileUtils.formatFileSize(file.size);
+        
+        // Calculate and update progress percentage
+        const progress = ((currentIndex + 1) / totalFiles) * 100;
+        progressFill.style.width = `${progress}%`;
+        progressPercent.textContent = `${Math.round(progress)}%`;
+    } else {
+        // Reset progress
+        progressFill.style.width = '0%';
+        progressPercent.textContent = '0%';
+        progressText.textContent = 'filename.ext';
+        progressSize.textContent = '0 KB';
     }
 }
 
@@ -1184,6 +1289,18 @@ window.signUpWithGoogle = auth.signInWithGoogle;
 window.signOut = auth.signOut;
 window.editProfile = () => showToast('Profile editing coming soon!', 'info');
 window.togglePassword = togglePassword;
+
+// Test function for debugging
+window.testFileUpload = function() {
+    console.log('Testing file upload...');
+    const fileInput = document.getElementById('fileInput');
+    if (fileInput) {
+        console.log('File input found, triggering click...');
+        fileInput.click();
+    } else {
+        console.error('File input not found in test function');
+    }
+};
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', initializeApp);
