@@ -938,8 +938,15 @@ function renderFiles(filesToRender = currentFiles) {
         return;
     }
 
-    const filesHTML = filesToRender.map(file => `
-        <div class="file-card ${isBulkSelectMode && selectedFiles.has(file.id) ? 'selected' : ''}" data-file-id="${file.id}">
+    // Use DocumentFragment for better performance
+    const fragment = document.createDocumentFragment();
+    
+    filesToRender.forEach(file => {
+        const fileCard = document.createElement('div');
+        fileCard.className = `file-card ${isBulkSelectMode && selectedFiles.has(file.id) ? 'selected' : ''}`;
+        fileCard.dataset.fileId = file.id;
+        
+        fileCard.innerHTML = `
             ${isBulkSelectMode ? `
                 <div class="file-checkbox">
                     <input type="checkbox" ${selectedFiles.has(file.id) ? 'checked' : ''} 
@@ -957,7 +964,7 @@ function renderFiles(filesToRender = currentFiles) {
             <div class="file-actions">
                 ${fileUtils.isArchive({ name: file.original_name, type: file.type }) ? 
                     `<button class="action-btn archive-btn" onclick="openArchiveContents(${file.id})" title="View Archive Contents">
-                        <i class="fas fa-folder-open"></i>
+                        <i class="fas fa-archive"></i>
                         <span class="btn-label">View Contents</span>
                     </button>` : ''
                 }
@@ -974,10 +981,13 @@ function renderFiles(filesToRender = currentFiles) {
                     <span class="btn-label">Delete</span>
                 </button>
             </div>
-        </div>
-    `).join('');
+        `;
+        
+        fragment.appendChild(fileCard);
+    });
 
-    filesContainer.innerHTML = filesHTML;
+    filesContainer.innerHTML = '';
+    filesContainer.appendChild(fragment);
 }
 
 // Update statistics
@@ -1106,17 +1116,33 @@ async function copyShareLinkFromCard(fileId) {
     const shareUrl = generateShareUrl(file.share_id);
     
     try {
-        await navigator.clipboard.writeText(shareUrl);
-        showToast('Share link copied to clipboard!', 'success');
+        // Try modern clipboard API first
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(shareUrl);
+            showToast('Share link copied to clipboard!', 'success');
+        } else {
+            // Fallback for older browsers or non-secure contexts
+            const textArea = document.createElement('textarea');
+            textArea.value = shareUrl;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                document.execCommand('copy');
+                showToast('Share link copied to clipboard!', 'success');
+            } catch (err) {
+                showToast('Share link: ' + shareUrl, 'info');
+            }
+            
+            document.body.removeChild(textArea);
+        }
     } catch (error) {
-        // Fallback for older browsers
-        const textArea = document.createElement('textarea');
-        textArea.value = shareUrl;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-        showToast('Share link copied to clipboard!', 'success');
+        console.error('Copy failed:', error);
+        showToast('Share link: ' + shareUrl, 'info');
     }
 }
 
