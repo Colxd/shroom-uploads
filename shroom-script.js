@@ -1008,23 +1008,17 @@ function updateUploadProgress(file, currentIndex, totalFiles, uploadProgress = 0
             progress = Math.min(30, (currentIndex / totalFiles) * 30);
         }
 
-        // Start with 0% and animate to current progress
-        progressFill.style.width = '0%';
-        progressPercent.textContent = '0%';
+        // Immediately start showing progress
+        progressFill.style.width = `${progress}%`;
+        progressPercent.textContent = `${Math.round(progress)}%`;
 
-        // Animate progress over time with delay
-        setTimeout(() => {
-            progressFill.style.width = `${progress}%`;
-            progressPercent.textContent = `${Math.round(progress)}%`;
+        // Add animation to progress bar
+        progressFill.style.transition = 'width 1.5s ease-in-out';
 
-            // Add animation to progress bar
-            progressFill.style.transition = 'width 1.5s ease-in-out';
-
-            // Add shimmer effect to progress bar
-            progressFill.style.background = 'linear-gradient(90deg, #ff6b35, #f7931e, #ff6b35)';
-            progressFill.style.backgroundSize = '200% 100%';
-            progressFill.style.animation = 'shimmer 2s infinite';
-        }, 300);
+        // Add shimmer effect to progress bar
+        progressFill.style.background = 'linear-gradient(90deg, #ff6b35, #f7931e, #ff6b35)';
+        progressFill.style.backgroundSize = '200% 100%';
+        progressFill.style.animation = 'shimmer 2s infinite';
     } else {
         // Reset progress
         progressFill.style.width = '0%';

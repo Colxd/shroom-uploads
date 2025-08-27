@@ -586,9 +586,8 @@ main {
     margin-top: auto;
     justify-content: flex-start;
     align-items: center;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     padding-top: 0.5rem;
-    overflow-x: auto;
 }
 
 .file-checkbox {
