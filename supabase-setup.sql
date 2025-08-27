@@ -4,7 +4,7 @@
 -- Drop existing table if it exists (for clean setup)
 DROP TABLE IF EXISTS files CASCADE;
 
--- Create the files table without encryption (simplified)
+-- Create the files table with folder support
 CREATE TABLE IF NOT EXISTS files (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS files (
     download_url TEXT NOT NULL,
     storage_ref VARCHAR(255) NOT NULL,
     share_id VARCHAR(50) UNIQUE NOT NULL,
+    folder_path VARCHAR(500),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -22,6 +23,7 @@ CREATE TABLE IF NOT EXISTS files (
 CREATE INDEX IF NOT EXISTS idx_files_share_id ON files(share_id);
 CREATE INDEX IF NOT EXISTS idx_files_created_at ON files(created_at);
 CREATE INDEX IF NOT EXISTS idx_files_upload_date ON files(upload_date);
+CREATE INDEX IF NOT EXISTS idx_files_folder_path ON files(folder_path);
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE files ENABLE ROW LEVEL SECURITY;
