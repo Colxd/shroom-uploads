@@ -280,19 +280,22 @@ function generateShareId() {
 }
 
 function generateShareUrl(shareId) {
-    // Handle local file:// URLs (when running locally)
-    if (window.location.origin === 'null' || !window.location.origin) {
-        // For local development, use the current file path
-        return `${window.location.href.split('?')[0]}?share=${shareId}`;
-    }
-    
     // For hosted sites, use the proper origin
-    return `${window.location.origin}${window.location.pathname}?share=${shareId}`;
+    return `https://shroomuploads.online?share=${shareId}`;
 }
 
 window.copyShareLink = async function() {
     try {
-        await navigator.clipboard.writeText(shareLink.value);
+        // Try modern clipboard API first
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(shareLink.value);
+        } else {
+            // Fallback for older browsers or non-secure contexts
+            shareLink.select();
+            shareLink.setSelectionRange(0, 99999); // For mobile devices
+            document.execCommand('copy');
+        }
+        
         copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
         copyBtn.classList.add('copied');
         showToast('Share link copied to clipboard!', 'success');
@@ -303,25 +306,44 @@ window.copyShareLink = async function() {
         }, 2000);
     } catch (error) {
         console.error('Failed to copy:', error);
-        showToast('Failed to copy link', 'error');
+        // Fallback: show the link in a toast
+        showToast(`Share link: ${shareLink.value}`, 'info');
     }
 };
 
 window.downloadCurrentFile = async function() {
     if (!currentFileId) return;
     
-    const file = currentFiles.find(f => f.id === currentFileId);
-    if (!file) return;
+    // Convert currentFileId to number for comparison
+    const numericFileId = parseInt(currentFileId);
+
+    const file = currentFiles.find(f => f.id === numericFileId);
+    if (!file) {
+        console.error('File not found:', numericFileId);
+        return;
+    }
     
     try {
-        // Create a temporary link to download the file
+        // Fetch the file content as a blob
+        const response = await fetch(file.download_url);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const blob = await response.blob();
+
+        // Create a temporary URL for the blob
+        const blobUrl = URL.createObjectURL(blob);
+
         const link = document.createElement('a');
-        link.href = file.download_url;
+        link.href = blobUrl; // Use the blob URL
         link.download = file.name;
         link.style.display = 'none';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+
+        // Clean up the object URL after use
+        URL.revokeObjectURL(blobUrl);
         
         showToast('Download started!', 'success');
     } catch (error) {
@@ -333,67 +355,73 @@ window.downloadCurrentFile = async function() {
 window.deleteCurrentFile = async function() {
     if (!currentFileId) return;
     
-    if (!confirm('Are you sure you want to delete this file? This action cannot be undone.')) {
-        return;
-    }
-    
     const file = currentFiles.find(f => f.id === currentFileId);
     if (!file) return;
     
-    try {
-        // Delete from storage
-        const { error: storageError } = await window.supabase.storage
-            .from('uploads')
-            .remove([file.storage_ref]);
-        
-        if (storageError) {
-            throw storageError;
+    // Show custom confirmation modal
+    showDeleteConfirmation('Are you sure you want to delete this file?', async () => {
+        try {
+            // Delete from storage
+            const { error: storageError } = await window.supabase.storage
+                .from('uploads')
+                .remove([file.storage_ref]);
+            
+            if (storageError) {
+                throw storageError;
+            }
+            
+            // Delete from database
+            const { error: dbError } = await window.supabase
+                .from('files')
+                .delete()
+                .eq('id', currentFileId);
+            
+            if (dbError) {
+                throw dbError;
+            }
+            
+            showToast('File deleted successfully!', 'success');
+            closeModal();
+            await loadFiles();
+        } catch (error) {
+            console.error('Delete error:', error);
+            showToast('Failed to delete file', 'error');
         }
-        
-        // Delete from database
-        const { error: dbError } = await window.supabase
-            .from('files')
-            .delete()
-            .eq('id', currentFileId);
-        
-        if (dbError) {
-            throw dbError;
-        }
-        
-        showToast('File deleted successfully!', 'success');
-        closeModal();
-        await loadFiles();
-    } catch (error) {
-        console.error('Delete error:', error);
-        showToast('Failed to delete file', 'error');
-    }
+    });
 };
 
 // Helper functions for file card actions - Make them global
 window.downloadFileFromCard = async function(fileId) {
-    console.log('Download button clicked for file:', fileId);
-    
     // Convert fileId to number for comparison
     const numericFileId = parseInt(fileId);
+    
     const file = currentFiles.find(f => f.id === numericFileId);
     if (!file) {
         console.error('File not found:', numericFileId);
         return;
     }
     
-    console.log('Downloading file:', file);
-    
     try {
-        // Create a temporary link element
+        // Fetch the file content as a blob
+        const response = await fetch(file.download_url);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const blob = await response.blob();
+
+        // Create a temporary URL for the blob
+        const blobUrl = URL.createObjectURL(blob);
+
         const link = document.createElement('a');
-        link.href = file.download_url;
+        link.href = blobUrl; // Use the blob URL
         link.download = file.name;
         link.style.display = 'none';
-        
-        // Add to DOM, click, and remove
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+
+        // Clean up the object URL after use
+        URL.revokeObjectURL(blobUrl);
         
         showToast('Download started!', 'success');
     } catch (error) {
@@ -403,8 +431,6 @@ window.downloadFileFromCard = async function(fileId) {
 };
 
 window.copyShareLinkFromCard = async function(fileId) {
-    console.log('Copy link button clicked for file:', fileId);
-    
     // Convert fileId to number for comparison
     const numericFileId = parseInt(fileId);
     const file = currentFiles.find(f => f.id === numericFileId);
@@ -414,24 +440,29 @@ window.copyShareLinkFromCard = async function(fileId) {
     }
     
     const shareUrl = generateShareUrl(file.share_id);
-    console.log('Share URL:', shareUrl);
     
     try {
-        await navigator.clipboard.writeText(shareUrl);
+        // Try modern clipboard API first
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(shareUrl);
+        } else {
+            // Fallback for older browsers or non-secure contexts
+            const textArea = document.createElement('textarea');
+            textArea.value = shareUrl;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+        }
         showToast('Share link copied to clipboard!', 'success');
     } catch (error) {
         console.error('Failed to copy:', error);
-        showToast('Failed to copy link', 'error');
+        // Fallback: show the link in a toast
+        showToast(`Share link: ${shareUrl}`, 'info');
     }
 };
 
 window.deleteFileFromCard = async function(fileId) {
-    console.log('Delete button clicked for file:', fileId);
-    
-    if (!confirm('Are you sure you want to delete this file? This action cannot be undone.')) {
-        return;
-    }
-    
     // Convert fileId to number for comparison
     const numericFileId = parseInt(fileId);
     const file = currentFiles.find(f => f.id === numericFileId);
@@ -440,34 +471,35 @@ window.deleteFileFromCard = async function(fileId) {
         return;
     }
     
-    console.log('Deleting file:', file);
-    
-    try {
-        // Delete from storage
-        const { error: storageError } = await window.supabase.storage
-            .from('uploads')
-            .remove([file.storage_ref]);
-        
-        if (storageError) {
-            throw storageError;
+    // Show custom confirmation modal
+    showDeleteConfirmation('Are you sure you want to delete this file?', async () => {
+        try {
+            // Delete from storage
+            const { error: storageError } = await window.supabase.storage
+                .from('uploads')
+                .remove([file.storage_ref]);
+            
+            if (storageError) {
+                throw storageError;
+            }
+            
+            // Delete from database
+            const { error: dbError } = await window.supabase
+                .from('files')
+                .delete()
+                .eq('id', numericFileId);
+            
+            if (dbError) {
+                throw dbError;
+            }
+            
+            showToast('File deleted successfully!', 'success');
+            await loadFiles();
+        } catch (error) {
+            console.error('Delete error:', error);
+            showToast('Failed to delete file', 'error');
         }
-        
-        // Delete from database
-        const { error: dbError } = await window.supabase
-            .from('files')
-            .delete()
-            .eq('id', numericFileId);
-        
-        if (dbError) {
-            throw dbError;
-        }
-        
-        showToast('File deleted successfully!', 'success');
-        await loadFiles();
-    } catch (error) {
-        console.error('Delete error:', error);
-        showToast('Failed to delete file', 'error');
-    }
+    });
 };
 
 // Test function to verify buttons work
@@ -498,37 +530,36 @@ window.refreshFiles = async function() {
 };
 
 window.clearAllFiles = async function() {
-    if (!confirm('Are you sure you want to delete ALL files? This action cannot be undone.')) {
-        return;
-    }
-    
-    try {
-        // Delete all files from storage
-        const storageRefs = currentFiles.map(file => file.storage_ref);
-        const { error: storageError } = await window.supabase.storage
-            .from('uploads')
-            .remove(storageRefs);
-        
-        if (storageError) {
-            throw storageError;
+    // Show custom confirmation modal
+    showDeleteConfirmation('Are you sure you want to delete ALL files? This action cannot be undone.', async () => {
+        try {
+            // Delete all files from storage
+            const storageRefs = currentFiles.map(file => file.storage_ref);
+            const { error: storageError } = await window.supabase.storage
+                .from('uploads')
+                .remove(storageRefs);
+            
+            if (storageError) {
+                throw storageError;
+            }
+            
+            // Delete all files from database
+            const { error: dbError } = await window.supabase
+                .from('files')
+                .delete()
+                .neq('id', 0); // Delete all records
+            
+            if (dbError) {
+                throw dbError;
+            }
+            
+            showToast('All files deleted successfully!', 'success');
+            await loadFiles();
+        } catch (error) {
+            console.error('Clear all error:', error);
+            showToast('Failed to delete all files', 'error');
         }
-        
-        // Delete all files from database
-        const { error: dbError } = await window.supabase
-            .from('files')
-            .delete()
-            .neq('id', 0); // Delete all records
-        
-        if (dbError) {
-            throw dbError;
-        }
-        
-        showToast('All files deleted successfully!', 'success');
-        await loadFiles();
-    } catch (error) {
-        console.error('Clear all error:', error);
-        showToast('Failed to delete all files', 'error');
-    }
+    });
 };
 
 window.switchSection = function(sectionName) {
@@ -604,6 +635,53 @@ function showToast(message, type = 'success') {
     }, 5000);
 }
 
+function showDeleteConfirmation(message, onConfirm) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay active';
+    modal.innerHTML = `
+        <div class="modal delete-confirmation-modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Confirm Delete</h3>
+                <button class="close-btn" onclick="this.closest('.modal-overlay').remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="confirmation-content">
+                    <i class="fas fa-exclamation-triangle warning-icon"></i>
+                    <p class="confirmation-message">${message}</p>
+                </div>
+                <div class="modal-actions">
+                    <button class="action-btn secondary" onclick="this.closest('.modal-overlay').remove()">
+                        <i class="fas fa-times"></i>
+                        Cancel
+                    </button>
+                    <button class="action-btn danger" id="confirmDeleteBtn">
+                        <i class="fas fa-trash"></i>
+                        Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Add event listener to the confirm button
+    const confirmBtn = modal.querySelector('#confirmDeleteBtn');
+    confirmBtn.addEventListener('click', () => {
+        // Disable button to prevent double-click
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+        
+        // Remove the modal
+        modal.remove();
+        
+        // Execute the delete function
+        onConfirm();
+    });
+}
+
 // Check for shared file on page load
 function checkSharedFile() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -674,15 +752,28 @@ function showSharedFileModal(file) {
     document.body.appendChild(modal);
 }
 
-function downloadSharedFile(downloadURL, fileName) {
+async function downloadSharedFile(downloadURL, fileName) {
     try {
+        // Fetch the file content as a blob
+        const response = await fetch(downloadURL);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const blob = await response.blob();
+
+        // Create a temporary URL for the blob
+        const blobUrl = URL.createObjectURL(blob);
+
         const link = document.createElement('a');
-        link.href = downloadURL;
+        link.href = blobUrl; // Use the blob URL
         link.download = fileName;
         link.style.display = 'none';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+
+        // Clean up the object URL after use
+        URL.revokeObjectURL(blobUrl);
         
         showToast('Download started!', 'success');
     } catch (error) {
