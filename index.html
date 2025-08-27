@@ -465,9 +465,13 @@
                     <p id="sharedFileType">application/octet-stream</p>
                 </div>
                 <div class="modal-actions">
-                    <button class="action-btn" onclick="downloadSharedFile()">
+                    <button id="sharedFileDownload" class="action-btn primary">
                         <i class="fas fa-download"></i>
                         Download
+                    </button>
+                    <button id="sharedFileArchive" class="action-btn secondary" style="display: none;">
+                        <i class="fas fa-archive"></i>
+                        View Contents
                     </button>
                 </div>
             </div>

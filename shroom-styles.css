@@ -501,8 +501,8 @@ main {
 /* Files Grid */
 .files-container {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 0.75rem;
     margin-bottom: 2rem;
     min-height: 400px;
     width: 100%;
@@ -510,14 +510,14 @@ main {
 
 .file-card {
     background: rgba(42, 42, 42, 0.8);
-    border-radius: 12px;
-    padding: 1.25rem;
+    border-radius: 10px;
+    padding: 1rem;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     border: 1px solid rgba(255, 255, 255, 0.1);
     position: relative;
     overflow: visible;
     cursor: pointer;
-    min-height: 180px;
+    min-height: 160px;
     display: flex;
     flex-direction: column;
 }
@@ -581,12 +581,12 @@ main {
 
 .file-actions {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.4rem;
     margin-top: auto;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
     flex-wrap: wrap;
-    padding-top: 0.75rem;
+    padding-top: 0.5rem;
 }
 
 .file-checkbox {
@@ -605,9 +605,9 @@ main {
 
 /* Action Buttons */
 .action-btn {
-    padding: 0.6rem 0.8rem;
+    padding: 0.5rem 0.7rem;
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: 6px;
     background: var(--dark-bg-tertiary);
     color: var(--text-primary);
     font-weight: 600;
@@ -615,12 +615,12 @@ main {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
-    font-size: 0.8rem;
+    gap: 0.3rem;
+    font-size: 0.75rem;
     position: relative;
     overflow: hidden;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    min-width: 90px;
+    min-width: 80px;
     justify-content: center;
     white-space: nowrap;
 }

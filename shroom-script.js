@@ -873,15 +873,27 @@ async function uploadFile(file, currentIndex = 0, totalFiles = 1) {
         // Update progress to show uploading
         updateUploadStep('Uploading to cloud storage...');
         
+        // Simulate upload progress (since Supabase doesn't provide progress callbacks)
+        let uploadProgress = 0;
+        const progressInterval = setInterval(() => {
+            if (uploadProgress < 90) {
+                uploadProgress += Math.random() * 10;
+                updateUploadProgress(file, currentIndex, totalFiles, uploadProgress);
+            }
+        }, 200);
+        
         // Upload file to Supabase Storage
         const { data: uploadData, error: uploadError } = await window.supabase.storage
             .from('uploads')
             .upload(fileName, file);
 
+        clearInterval(progressInterval);
+
         if (uploadError) throw uploadError;
 
         // Update progress to show processing
         updateUploadStep('Processing file...');
+        updateUploadProgress(file, currentIndex, totalFiles, 95);
         
         // Get public URL
         const { data: urlData } = window.supabase.storage
@@ -910,6 +922,7 @@ async function uploadFile(file, currentIndex = 0, totalFiles = 1) {
 
         // Update progress to show completion
         updateUploadStep('File uploaded successfully!');
+        updateUploadProgress(file, currentIndex, totalFiles, 100);
         
         return insertData[0];
     } catch (error) {
@@ -948,43 +961,43 @@ function updateUploadProgress(file, currentIndex, totalFiles, uploadProgress = 0
     const progressSize = document.getElementById('uploadFileSize');
     const progressPercent = document.querySelector('.progress-text');
     const progressHeader = document.querySelector('.progress-header h4');
-    
+
     if (!progressBar || !progressFill || !progressText || !progressSize || !progressPercent || !progressHeader) return;
-    
+
     if (file) {
         // Update file info
         progressText.textContent = file.name;
         progressSize.textContent = fileUtils.formatFileSize(file.size);
-        
+
         // Update header to show current file progress
         if (totalFiles > 1) {
             progressHeader.textContent = `Uploading Files (${currentIndex + 1} of ${totalFiles})`;
         } else {
             progressHeader.textContent = 'Uploading File';
         }
-        
+
         // Calculate progress percentage based on actual upload progress
         let progress = 0;
         if (uploadProgress > 0) {
-            // If we have actual upload progress, use it
-            progress = uploadProgress;
+            // If we have actual upload progress, use it (0-100%)
+            progress = Math.min(100, uploadProgress);
         } else {
-            // Otherwise, show file preparation progress (0-50%)
-            progress = Math.min(50, (currentIndex / totalFiles) * 50);
+            // Otherwise, show file preparation progress (0-30%)
+            progress = Math.min(30, (currentIndex / totalFiles) * 30);
         }
-        
+
         // Start with 0% and animate to current progress
         progressFill.style.width = '0%';
         progressPercent.textContent = '0%';
-        
+
         // Animate progress over time with delay
         setTimeout(() => {
             progressFill.style.width = `${progress}%`;
             progressPercent.textContent = `${Math.round(progress)}%`;
-            
+
             // Add animation to progress bar
             progressFill.style.transition = 'width 1.5s ease-in-out';
-            
+
             // Add shimmer effect to progress bar
             progressFill.style.background = 'linear-gradient(90deg, #ff6b35, #f7931e, #ff6b35)';
             progressFill.style.backgroundSize = '200% 100%';
