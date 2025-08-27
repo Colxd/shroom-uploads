@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shroom Uploads - Modern File Sharing</title>
+    <link rel="stylesheet" href="shroom-styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Background Animation -->
+    <div class="background-animation">
+        <div class="spore spore-1"></div>
+        <div class="spore spore-2"></div>
+        <div class="spore spore-3"></div>
+        <div class="spore spore-4"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon">
+                    <i class="fas fa-seedling"></i>
+                </div>
+                <h1 class="logo-text">Shroom Uploads</h1>
+            </div>
+            <nav class="nav">
+                <a href="#home" class="nav-link active" data-section="home">
+                    <i class="fas fa-home"></i>
+                    <span>Home</span>
+                </a>
+                <a href="#upload" class="nav-link" data-section="upload">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <span>Upload</span>
+                </a>
+                <a href="#files" class="nav-link" data-section="files">
+                    <i class="fas fa-folder"></i>
+                    <span>My Files</span>
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-container">
+        <!-- Home Section -->
+        <section id="home" class="section active">
+            <div class="hero">
+                <div class="hero-content">
+                    <h1 class="hero-title">
+                        Share Files with 
+                        <span class="gradient-text">Shroom Uploads</span>
+                    </h1>
+                    <p class="hero-subtitle">
+                        Modern, secure, and lightning-fast file sharing with real-time download links
+                    </p>
+                    <button class="cta-button" onclick="switchSection('upload')">
+                        <i class="fas fa-rocket"></i>
+                        Start Uploading
+                    </button>
+                </div>
+                <div class="hero-visual">
+                    <div class="upload-illustration">
+                        <div class="cloud-icon">
+                            <i class="fas fa-cloud"></i>
+                        </div>
+                        <div class="files-floating">
+                            <div class="file-icon"><i class="fas fa-file-pdf"></i></div>
+                            <div class="file-icon"><i class="fas fa-file-image"></i></div>
+                            <div class="file-icon"><i class="fas fa-file-video"></i></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Upload Section -->
+        <section id="upload" class="section">
+            <div class="upload-container">
+                <h2 class="section-title">Upload Your Files</h2>
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-content">
+                        <div class="upload-icon">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                        </div>
+                        <h3>Drop files here to upload</h3>
+                        <p>or click to browse files</p>
+                        <input type="file" id="fileInput" multiple style="display: none;">
+                        <button class="browse-button" onclick="document.getElementById('fileInput').click()">
+                            <i class="fas fa-folder-open"></i>
+                            Browse Files
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Upload Progress -->
+                <div class="upload-progress-container" id="uploadProgressContainer" style="display: none;">
+                    <div class="upload-item" id="uploadItem">
+                        <div class="upload-info">
+                            <div class="file-icon-small">
+                                <i class="fas fa-file"></i>
+                            </div>
+                            <div class="file-details">
+                                <span class="file-name" id="uploadFileName">filename.txt</span>
+                                <span class="file-size" id="uploadFileSize">1.2 MB</span>
+                            </div>
+                        </div>
+                        <div class="progress-section">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="progressFill"></div>
+                            </div>
+                            <span class="progress-text" id="progressText">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Files Section -->
+        <section id="files" class="section">
+            <div class="files-container">
+                <div class="files-header">
+                    <h2 class="section-title">Your Files</h2>
+                    <div class="files-actions">
+                        <button class="action-btn" onclick="refreshFiles()">
+                            <i class="fas fa-sync-alt"></i>
+                            Refresh
+                        </button>
+                        <button class="action-btn danger" onclick="clearAllFiles()">
+                            <i class="fas fa-trash"></i>
+                            Clear All
+                        </button>
+                    </div>
+                </div>
+                <div class="files-grid" id="filesGrid">
+                    <!-- Files will be dynamically loaded here -->
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- File Details Modal -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">File Details</h3>
+                <button class="close-btn" onclick="closeModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="file-preview">
+                    <div class="file-icon-large" id="modalFileIcon">
+                        <i class="fas fa-file"></i>
+                    </div>
+                    <div class="file-info-modal">
+                        <h4 id="modalFileName">File Name</h4>
+                        <p class="file-meta" id="modalFileSize">File Size</p>
+                        <p class="file-meta" id="modalFileType">File Type</p>
+                        <p class="file-meta" id="modalUploadDate">Upload Date</p>
+                    </div>
+                </div>
+                <div class="share-section">
+                    <label>Share Link:</label>
+                    <div class="share-input-container">
+                        <input type="text" id="shareLink" readonly class="share-input">
+                        <button class="copy-btn" onclick="copyShareLink()" id="copyBtn">
+                            <i class="fas fa-copy"></i>
+                            Copy
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button class="action-btn primary" onclick="downloadCurrentFile()">
+                        <i class="fas fa-download"></i>
+                        Download
+                    </button>
+                    <button class="action-btn danger" onclick="deleteCurrentFile()">
+                        <i class="fas fa-trash"></i>
+                        Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Supabase SDK -->
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+        
+        // Initialize Supabase client
+        // Your Supabase project credentials
+        const supabaseUrl = 'https://nxvamweowhoepvgygttj.supabase.co'
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54dmFtd2Vvd2hvZXB2Z3lndHRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYyNjM0MTYsImV4cCI6MjA3MTgzOTQxNn0.DrN6DMomcXrj3Zwx3guzMpxE5_PCaA1M7xbVihuvunI'
+        
+        const supabase = createClient(supabaseUrl, supabaseKey)
+
+        // Make Supabase available globally
+        window.supabase = supabase
+        
+        console.log('Supabase initialized:', window.supabase)
+    </script>
+
+    <script src="shroom-script.js"></script>
+</body>
+</html>
