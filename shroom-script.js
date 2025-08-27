@@ -367,6 +367,13 @@ function showSharedFileModal(file) {
     const downloadBtn = document.getElementById('sharedFileDownload');
     const archiveBtn = document.getElementById('sharedFileArchive');
     
+    // Check if all elements exist before proceeding
+    if (!modal || !fileName || !fileSize || !fileType || !downloadBtn || !archiveBtn) {
+        console.error('Shared file modal elements not found');
+        showToast('Error loading shared file modal', 'error');
+        return;
+    }
+    
     fileName.textContent = file.original_name;
     fileSize.textContent = fileUtils.formatFileSize(file.size);
     fileType.textContent = file.type;
@@ -750,9 +757,12 @@ async function uploadFiles(files) {
     let uploadedCount = 0;
     const totalFiles = files.length;
 
-    for (const file of files) {
-        await uploadFile(file, uploadedCount, totalFiles);
-        uploadedCount++;
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        await uploadFile(file, i, totalFiles);
+        
+        // Update progress after each file
+        updateUploadProgress(file, i + 1, totalFiles);
     }
 
     // Hide progress bar when done
@@ -793,9 +803,6 @@ async function uploadFile(file, currentIndex = 0, totalFiles = 1) {
     }
 
     try {
-        // Update progress for current file
-        updateUploadProgress(file, currentIndex, totalFiles);
-        
         // Update progress text to show current step
         updateUploadStep('Preparing file...');
         
@@ -897,18 +904,24 @@ function updateUploadProgress(file, currentIndex, totalFiles) {
             progressHeader.textContent = 'Uploading File';
         }
         
-        // Calculate and update progress percentage
-        const progress = ((currentIndex + 1) / totalFiles) * 100;
-        progressFill.style.width = `${progress}%`;
-        progressPercent.textContent = `${Math.round(progress)}%`;
+        // Start with 0% and animate to current progress
+        progressFill.style.width = '0%';
+        progressPercent.textContent = '0%';
         
-        // Add animation to progress bar
-        progressFill.style.transition = 'width 0.3s ease';
-        
-        // Add shimmer effect to progress bar
-        progressFill.style.background = 'linear-gradient(90deg, #ff6b35, #f7931e, #ff6b35)';
-        progressFill.style.backgroundSize = '200% 100%';
-        progressFill.style.animation = 'shimmer 2s infinite';
+        // Animate progress over time
+        setTimeout(() => {
+            const progress = ((currentIndex + 1) / totalFiles) * 100;
+            progressFill.style.width = `${progress}%`;
+            progressPercent.textContent = `${Math.round(progress)}%`;
+            
+            // Add animation to progress bar
+            progressFill.style.transition = 'width 1s ease-in-out';
+            
+            // Add shimmer effect to progress bar
+            progressFill.style.background = 'linear-gradient(90deg, #ff6b35, #f7931e, #ff6b35)';
+            progressFill.style.backgroundSize = '200% 100%';
+            progressFill.style.animation = 'shimmer 2s infinite';
+        }, 100);
     } else {
         // Reset progress
         progressFill.style.width = '0%';
@@ -925,6 +938,12 @@ function updateUploadStep(stepText) {
     const progressText = document.getElementById('uploadFileName');
     if (progressText) {
         progressText.textContent = stepText;
+    }
+    
+    // Also update the progress header if it exists
+    const progressHeader = document.querySelector('.progress-header h4');
+    if (progressHeader) {
+        progressHeader.textContent = stepText;
     }
 }
 
@@ -1127,14 +1146,20 @@ async function copyShareLinkFromCard(fileId) {
             textArea.style.position = 'fixed';
             textArea.style.left = '-999999px';
             textArea.style.top = '-999999px';
+            textArea.style.opacity = '0';
             document.body.appendChild(textArea);
             textArea.focus();
             textArea.select();
             
             try {
-                document.execCommand('copy');
-                showToast('Share link copied to clipboard!', 'success');
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showToast('Share link copied to clipboard!', 'success');
+                } else {
+                    showToast('Share link: ' + shareUrl, 'info');
+                }
             } catch (err) {
+                console.error('execCommand failed:', err);
                 showToast('Share link: ' + shareUrl, 'info');
             }
             
