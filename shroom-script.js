@@ -289,16 +289,31 @@ window.copyShareLink = async function() {
         // Try modern clipboard API first
         if (navigator.clipboard && window.isSecureContext) {
             await navigator.clipboard.writeText(shareLink.value);
+            copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+            copyBtn.classList.add('copied');
+            showToast('Share link copied to clipboard!', 'success');
         } else {
-            // Fallback for older browsers or non-secure contexts
-            shareLink.select();
-            shareLink.setSelectionRange(0, 99999); // For mobile devices
-            document.execCommand('copy');
+            // Fallback: create a temporary textarea and copy from it
+            const textArea = document.createElement('textarea');
+            textArea.value = shareLink.value;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            if (successful) {
+                copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                copyBtn.classList.add('copied');
+                showToast('Share link copied to clipboard!', 'success');
+            } else {
+                throw new Error('execCommand failed');
+            }
         }
-        
-        copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
-        copyBtn.classList.add('copied');
-        showToast('Share link copied to clipboard!', 'success');
         
         setTimeout(() => {
             copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
@@ -306,8 +321,12 @@ window.copyShareLink = async function() {
         }, 2000);
     } catch (error) {
         console.error('Failed to copy:', error);
-        // Fallback: show the link in a toast
+        // Final fallback: show the link in a toast and make it selectable
         showToast(`Share link: ${shareLink.value}`, 'info');
+        // Also make the input field visible and selectable
+        shareLink.style.display = 'block';
+        shareLink.select();
+        shareLink.focus();
     }
 };
 
@@ -445,19 +464,30 @@ window.copyShareLinkFromCard = async function(fileId) {
         // Try modern clipboard API first
         if (navigator.clipboard && window.isSecureContext) {
             await navigator.clipboard.writeText(shareUrl);
+            showToast('Share link copied to clipboard!', 'success');
         } else {
-            // Fallback for older browsers or non-secure contexts
+            // Fallback: create a temporary textarea and copy from it
             const textArea = document.createElement('textarea');
             textArea.value = shareUrl;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
             document.body.appendChild(textArea);
+            textArea.focus();
             textArea.select();
-            document.execCommand('copy');
+            
+            const successful = document.execCommand('copy');
             document.body.removeChild(textArea);
+            
+            if (successful) {
+                showToast('Share link copied to clipboard!', 'success');
+            } else {
+                throw new Error('execCommand failed');
+            }
         }
-        showToast('Share link copied to clipboard!', 'success');
     } catch (error) {
         console.error('Failed to copy:', error);
-        // Fallback: show the link in a toast
+        // Final fallback: show the link in a toast
         showToast(`Share link: ${shareUrl}`, 'info');
     }
 };
