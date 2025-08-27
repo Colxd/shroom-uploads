@@ -759,10 +759,11 @@ async function uploadFiles(files) {
 
     for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        await uploadFile(file, i, totalFiles);
         
-        // Update progress after each file
-        updateUploadProgress(file, i + 1, totalFiles);
+        // Update progress before starting each file
+        updateUploadProgress(file, i, totalFiles);
+        
+        await uploadFile(file, i, totalFiles);
     }
 
     // Hide progress bar when done
@@ -904,24 +905,26 @@ function updateUploadProgress(file, currentIndex, totalFiles) {
             progressHeader.textContent = 'Uploading File';
         }
         
+        // Calculate progress percentage
+        const progress = totalFiles > 0 ? ((currentIndex + 1) / totalFiles) * 100 : 0;
+        
         // Start with 0% and animate to current progress
         progressFill.style.width = '0%';
         progressPercent.textContent = '0%';
         
-        // Animate progress over time
+        // Animate progress over time with delay
         setTimeout(() => {
-            const progress = ((currentIndex + 1) / totalFiles) * 100;
             progressFill.style.width = `${progress}%`;
             progressPercent.textContent = `${Math.round(progress)}%`;
             
             // Add animation to progress bar
-            progressFill.style.transition = 'width 1s ease-in-out';
+            progressFill.style.transition = 'width 1.5s ease-in-out';
             
             // Add shimmer effect to progress bar
             progressFill.style.background = 'linear-gradient(90deg, #ff6b35, #f7931e, #ff6b35)';
             progressFill.style.backgroundSize = '200% 100%';
             progressFill.style.animation = 'shimmer 2s infinite';
-        }, 100);
+        }, 300);
     } else {
         // Reset progress
         progressFill.style.width = '0%';
@@ -1393,6 +1396,12 @@ function showToast(message, type = 'info', title = null, duration = 5000) {
             <div class="toast-progress-fill" style="width: 100%"></div>
         </div>
     `;
+    
+    // Ensure toast is positioned in top right
+    toast.style.position = 'fixed';
+    toast.style.top = '20px';
+    toast.style.right = '20px';
+    toast.style.zIndex = '999999';
     
     document.body.appendChild(toast);
     

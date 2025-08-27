@@ -157,6 +157,7 @@ main {
     min-height: calc(100vh - 80px);
     display: flex;
     flex-direction: column;
+    overflow-x: hidden;
 }
 
 /* Upload Section */
@@ -164,11 +165,12 @@ main {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     min-height: 60vh;
     padding: 2rem;
     text-align: center;
     position: relative;
+    padding-top: 4rem;
 }
 
 .section-title {
@@ -286,6 +288,8 @@ main {
     max-width: 600px;
     margin-left: auto;
     margin-right: auto;
+    position: relative;
+    z-index: 10;
 }
 
 .progress-header {
@@ -347,6 +351,8 @@ main {
     display: none;
     animation: fadeInUp 0.8s ease;
     flex: 1;
+    min-height: 100vh;
+    padding-bottom: 2rem;
 }
 
 .section.active {
@@ -498,6 +504,8 @@ main {
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 1.5rem;
     margin-bottom: 2rem;
+    min-height: 400px;
+    width: 100%;
 }
 
 .file-card {
@@ -507,8 +515,11 @@ main {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     border: 1px solid rgba(255, 255, 255, 0.1);
     position: relative;
-    overflow: hidden;
+    overflow: visible;
     cursor: pointer;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
 }
 
 .file-card:hover {
@@ -568,9 +579,11 @@ main {
 .file-actions {
     display: flex;
     gap: 0.75rem;
-    margin-top: 1.5rem;
+    margin-top: auto;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    padding-top: 1rem;
 }
 
 .file-checkbox {
@@ -589,7 +602,7 @@ main {
 
 /* Action Buttons */
 .action-btn {
-    padding: 0.75rem 1.5rem;
+    padding: 0.75rem 1rem;
     border: 1px solid var(--border-color);
     border-radius: 12px;
     background: var(--dark-bg-tertiary);
@@ -600,12 +613,13 @@ main {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     position: relative;
     overflow: hidden;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    min-width: 120px;
+    min-width: 100px;
     justify-content: center;
+    white-space: nowrap;
 }
 
 .action-btn:hover {
@@ -685,15 +699,15 @@ main {
 
 /* Toast Notifications */
 .toast {
-    position: fixed;
-    top: 15px;
-    right: 15px;
+    position: fixed !important;
+    top: 20px !important;
+    right: 20px !important;
     background: rgba(42, 42, 42, 0.95);
     color: white;
     padding: 1rem 1.25rem;
     border-radius: 12px;
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
-    z-index: 99999;
+    z-index: 999999 !important;
     transform: translateX(400px);
     transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
     max-width: 320px;
@@ -703,9 +717,11 @@ main {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    position: relative;
     overflow: hidden;
     pointer-events: auto;
+    margin: 0 !important;
+    left: auto !important;
+    bottom: auto !important;
 }
 
 .toast::before {
@@ -815,6 +831,7 @@ main {
 /* Toast Stacking */
 .toast + .toast {
     margin-top: 0.75rem;
+    top: calc(20px + (var(--toast-index, 0) * 80px)) !important;
 }
 
 /* Toast Progress Bar */
@@ -860,6 +877,11 @@ main {
     backdrop-filter: blur(10px);
     align-items: center;
     justify-content: center;
+}
+
+/* Ensure toasts are always on top */
+.toast {
+    z-index: 999999 !important;
 }
 
 .modal.show {
