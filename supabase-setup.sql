@@ -1,13 +1,16 @@
 -- Supabase Database Setup for Shroom Uploads
 -- Run this in your Supabase SQL Editor
 
--- Create the files table
+-- Drop existing table if it exists (for clean setup)
+DROP TABLE IF EXISTS files CASCADE;
+
+-- Create the files table without encryption (simplified)
 CREATE TABLE IF NOT EXISTS files (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     original_name VARCHAR(255) NOT NULL,
     size BIGINT NOT NULL,
-    type VARCHAR(100),
+    type VARCHAR(100) NOT NULL,
     upload_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     download_url TEXT NOT NULL,
     storage_ref VARCHAR(255) NOT NULL,
@@ -16,27 +19,22 @@ CREATE TABLE IF NOT EXISTS files (
 );
 
 -- Create indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_files_upload_date ON files(upload_date DESC);
 CREATE INDEX IF NOT EXISTS idx_files_share_id ON files(share_id);
+CREATE INDEX IF NOT EXISTS idx_files_created_at ON files(created_at);
+CREATE INDEX IF NOT EXISTS idx_files_upload_date ON files(upload_date);
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE files ENABLE ROW LEVEL SECURITY;
 
--- Create a policy that allows all operations (for demo purposes)
--- In production, you should create more restrictive policies
+-- Create a permissive policy for all operations (you can make this more restrictive later)
 CREATE POLICY "Allow all operations on files" ON files
     FOR ALL USING (true);
 
--- Create storage bucket for file uploads
--- Note: This needs to be done through the Supabase Dashboard
--- Go to Storage > Create a new bucket called "uploads"
--- Set it to public for demo purposes
-
--- Optional: Create a function to automatically generate share_id
+-- Optional: Create a function to generate share IDs
 CREATE OR REPLACE FUNCTION generate_share_id()
 RETURNS VARCHAR(50) AS $$
 BEGIN
-    RETURN substr(md5(random()::text), 1, 12);
+    RETURN encode(gen_random_bytes(12), 'base64');
 END;
 $$ LANGUAGE plpgsql;
 
@@ -51,7 +49,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER set_share_id_trigger
+CREATE TRIGGER trigger_set_share_id
     BEFORE INSERT ON files
     FOR EACH ROW
     EXECUTE FUNCTION set_share_id();

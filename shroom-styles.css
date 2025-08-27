@@ -128,6 +128,7 @@ body {
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    margin-left: -1rem;
 }
 
 .logo-icon {
@@ -152,12 +153,13 @@ body {
 }
 
 .logo-text {
-    font-size: 1.5rem;
+    font-size: 1.8rem;
     font-weight: 700;
     background: var(--gradient-orange);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    letter-spacing: -0.5px;
 }
 
 .nav {
@@ -267,6 +269,12 @@ body {
 .cta-button:hover {
     transform: translateY(-3px);
     box-shadow: 0 10px 30px rgba(255, 107, 53, 0.4);
+}
+
+.cta-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
 }
 
 .hero-visual {
@@ -395,6 +403,11 @@ body {
     transform: scale(1.02);
 }
 
+.upload-area.uploading {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
 .upload-content {
     position: relative;
     z-index: 2;
@@ -440,6 +453,12 @@ body {
 .browse-button:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-orange);
+}
+
+.browse-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
 }
 
 /* Upload Progress */
@@ -585,6 +604,12 @@ body {
     transform: translateY(-2px);
 }
 
+.action-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
 .action-btn.danger:hover {
     color: var(--danger);
     border-color: var(--danger);
@@ -594,6 +619,12 @@ body {
     background: var(--gradient-orange);
     color: white;
     border-color: var(--primary-orange);
+}
+
+.action-btn.secondary {
+    background: var(--dark-bg-secondary);
+    color: var(--text-secondary);
+    border-color: var(--border-color);
 }
 
 .files-grid {
@@ -663,6 +694,9 @@ body {
 .file-meta {
     color: var(--text-muted);
     font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .file-actions-card {
@@ -688,6 +722,52 @@ body {
     background: var(--primary-orange);
     color: white;
     transform: scale(1.1);
+}
+
+.file-action-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Loading States */
+.loading {
+    position: relative;
+    pointer-events: none;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.loading::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--primary-orange);
+    border-top: 2px solid transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    z-index: 1;
+}
+
+@keyframes spin {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
 }
 
 /* Modal */
@@ -844,6 +924,12 @@ body {
     background: var(--success);
 }
 
+.copy-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
 .modal-actions {
     display: flex;
     gap: 1rem;
@@ -851,6 +937,24 @@ body {
 
 .modal-actions .action-btn {
     flex: 1;
+}
+
+/* Delete Confirmation Modal */
+.delete-confirmation-modal .confirmation-content {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.warning-icon {
+    font-size: 3rem;
+    color: var(--warning);
+    margin-bottom: 1rem;
+}
+
+.confirmation-message {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
 }
 
 /* Toast Notifications */
