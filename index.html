@@ -38,74 +38,314 @@
     </div>
 
     <!-- Header -->
-    <header class="header">
-        <div class="header-content">
-            <div class="logo">
-                <div class="logo-icon">
-                    <img src="https://cdn.discordapp.com/attachments/1265508598008512545/1410120008238895154/shroom.png?ex=68afdc18&is=68ae8a98&hm=db8b2d4e3a17c8f67753ce2f8467d36d1aae560dab001e6ae59ec90496426a77&" alt="Shroom Uploads Logo" class="logo-image">
-                </div>
-                <span class="logo-text">Shroom Uploads</span>
+    <header>
+        <div class="logo">
+            <div class="logo-icon">
+                <img src="https://cdn.discordapp.com/attachments/1265508598008512545/1410120008238895154/shroom.png?ex=68afdc18&is=68ae8a98&hm=db8b2d4e3a17c8f67753ce2f8467d36d1aae560dab001e6ae59ec90496426a77&" alt="Shroom Uploads Logo" class="logo-image">
             </div>
-            <nav class="nav">
-                <a href="#upload" class="nav-link active">
-                    <i class="fas fa-cloud-upload-alt"></i>
-                    <span>Upload</span>
-                </a>
-                <a href="#files" class="nav-link">
-                    <i class="fas fa-folder"></i>
-                    <span>My Files</span>
-                </a>
-            </nav>
+            <span class="logo-text">Shroom Uploads</span>
         </div>
+        <nav>
+            <button class="nav-btn active" onclick="switchSection('upload')">Upload</button>
+            <button class="nav-btn" onclick="switchSection('files')">My Files</button>
+            <button class="nav-btn" onclick="switchSection('stats')">Statistics</button>
+            <button class="nav-btn" onclick="switchSection('account')">Account</button>
+        </nav>
     </header>
 
-    <!-- Main Container -->
-    <main class="main-container">
+    <!-- Main Content -->
+    <main>
         <!-- Upload Section -->
         <section id="uploadSection" class="section active">
             <div class="upload-container">
                 <h2 class="section-title">Upload Files</h2>
+                
                 <div class="upload-area" id="uploadArea">
                     <div class="upload-content">
-                        <i class="fas fa-cloud-upload-alt upload-icon"></i>
-                        <h3>Drag & Drop Files Here</h3>
-                        <p>or click to browse your files</p>
-                        <button class="browse-button" id="browseButton">
+                        <div class="upload-icon">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                        </div>
+                        <h3 class="upload-title">Drag & Drop Files Here</h3>
+                        <p class="upload-subtitle">or click to browse your files</p>
+                        <button class="browse-button" onclick="document.getElementById('fileInput').click()">
                             <i class="fas fa-paper-plane"></i>
                             Upload Files
                         </button>
                     </div>
+                    <input type="file" id="fileInput" multiple accept="*/*" style="display: none;">
                 </div>
-                <input type="file" id="fileInput" multiple style="display: none;">
-                
-                <!-- Upload Progress -->
-                <div id="uploadProgress" class="upload-progress" style="display: none;">
-                    <div class="progress-bar">
-                        <div id="uploadProgressBar" class="progress-fill"></div>
-                    </div>
-                    <p id="uploadProgressText">Uploading...</p>
+            </div>
+
+            <div class="upload-progress" id="uploadProgress" style="display: none;">
+                <div class="progress-header">
+                    <h4>Uploading Files</h4>
+                    <span class="progress-text">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="upload-details">
+                    <span id="uploadFileName">filename.ext</span>
+                    <span id="uploadFileSize">0 KB</span>
                 </div>
             </div>
         </section>
 
         <!-- Files Section -->
         <section id="filesSection" class="section">
-            <div class="files-container">
-                <div class="files-header">
-                    <h2 class="section-title">My Files</h2>
-                    <div class="files-actions">
-                        <button class="action-btn" onclick="refreshFiles()" title="Refresh">
-                            <i class="fas fa-sync-alt"></i>
-                            <span>Refresh</span>
-                        </button>
-                        <button class="action-btn danger" onclick="clearAllFiles()" title="Clear All">
-                            <i class="fas fa-trash"></i>
-                            <span>Clear All</span>
-                        </button>
+            <div class="section-header">
+                <h2>My Files</h2>
+                <div class="files-controls">
+                    <div class="search-container">
+                        <input type="text" id="fileSearch" placeholder="Search files..." class="search-input">
+                        <i class="fas fa-search search-icon"></i>
+                    </div>
+                    <div class="sort-container">
+                        <select id="sortSelect" class="sort-select">
+                            <option value="date-desc">Newest First</option>
+                            <option value="date-asc">Oldest First</option>
+                            <option value="name-asc">Name A-Z</option>
+                            <option value="name-desc">Name Z-A</option>
+                            <option value="size-desc">Largest First</option>
+                            <option value="size-asc">Smallest First</option>
+                        </select>
+                    </div>
+                    <button class="action-btn secondary" onclick="toggleBulkSelect()" id="bulkSelectBtn">
+                        <i class="fas fa-check-square"></i>
+                        Select Multiple
+                    </button>
+                    <button class="action-btn secondary" onclick="manualLoadFiles()" title="Refresh Files">
+                        <i class="fas fa-sync-alt"></i>
+                        Refresh
+                    </button>
+                    <button class="action-btn danger" onclick="showClearAllConfirmation()" title="Clear All Files">
+                        <i class="fas fa-trash"></i>
+                        Clear All
+                    </button>
+                </div>
+            </div>
+
+            <div class="storage-info">
+                <div class="storage-bar">
+                    <div class="storage-fill" id="storageFill"></div>
+                </div>
+                <div class="storage-text">
+                    <span id="storageUsed">0 KB</span> of <span id="storageTotal">100 MB</span> used
+                </div>
+            </div>
+
+            <div class="bulk-actions" id="bulkActions" style="display: none;">
+                <div class="bulk-info">
+                    <span id="selectedCount">0</span> files selected
+                </div>
+                <div class="bulk-buttons">
+                    <button class="action-btn secondary" onclick="selectAllFiles()">
+                        <i class="fas fa-check-double"></i>
+                        Select All
+                    </button>
+                    <button class="action-btn secondary" onclick="deselectAllFiles()">
+                        <i class="fas fa-times"></i>
+                        Deselect All
+                    </button>
+                    <button class="action-btn danger" onclick="deleteSelectedFiles()">
+                        <i class="fas fa-trash"></i>
+                        Delete Selected
+                    </button>
+                </div>
+            </div>
+
+            <div class="files-container" id="filesContainer">
+                <!-- Files will be loaded here -->
+            </div>
+        </section>
+
+        <!-- Statistics Section -->
+        <section id="statsSection" class="section">
+            <div class="section-header">
+                <h2>Upload Statistics</h2>
+                <p>Track your file upload activity and storage usage</p>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-file"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 id="totalFiles">0</h3>
+                        <p>Total Files</p>
                     </div>
                 </div>
-                <div class="files-container" id="filesContainer">
-                    <!-- Files will be loaded here -->
+                
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-hdd"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 id="totalStorage">0 KB</h3>
+                        <p>Storage Used</p>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-download"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 id="totalDownloads">0</h3>
+                        <p>Total Downloads</p>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-share"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 id="totalShares">0</h3>
+                        <p>Shared Files</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="recent-files">
+                <h3>Recent Files</h3>
+                <div class="recent-files-list" id="recentFilesList">
+                    <!-- Recent files will be loaded here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Account Section -->
+        <section id="accountSection" class="section">
+            <div class="account-container">
+                <div class="account-header">
+                    <h2 class="account-title">Account</h2>
+                    <p class="account-subtitle">Manage your account and preferences</p>
+                </div>
+                
+                <div class="auth-container">
+                    <!-- Login Form -->
+                    <div class="auth-card" id="loginForm">
+                        <h3>Sign In</h3>
+                        <form id="loginFormElement">
+                            <div class="form-group">
+                                <label for="loginEmail">Email</label>
+                                <input type="email" id="loginEmail" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="loginPassword">Password</label>
+                                <div class="password-input-container">
+                                    <input type="password" id="loginPassword" required>
+                                    <button type="button" class="password-toggle" onclick="togglePassword('loginPassword')">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <button type="submit" class="auth-btn primary">
+                                <i class="fas fa-arrow-right"></i>
+                                Sign In
+                            </button>
+                        </form>
+                        
+                        <div class="auth-divider">
+                            <span>or</span>
+                        </div>
+                        
+                        <button class="auth-btn google" onclick="signInWithGoogle()">
+                            <i class="fab fa-google"></i>
+                            Sign in with Google
+                        </button>
+                        
+                        <div class="auth-switch">
+                            Don't have an account? <a href="#" onclick="showSignupForm()">Sign up</a>
+                        </div>
+                    </div>
+
+                    <!-- Signup Form -->
+                    <div class="auth-card" id="signupForm" style="display: none;">
+                        <h3>Create Account</h3>
+                        <form id="signupFormElement">
+                            <div class="form-group">
+                                <label for="signupName">Full Name</label>
+                                <input type="text" id="signupName" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="signupEmail">Email</label>
+                                <input type="email" id="signupEmail" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="signupPassword">Password</label>
+                                <div class="password-input-container">
+                                    <input type="password" id="signupPassword" required>
+                                    <button type="button" class="password-toggle" onclick="togglePassword('signupPassword')">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="signupConfirmPassword">Confirm Password</label>
+                                <div class="password-input-container">
+                                    <input type="password" id="signupConfirmPassword" required>
+                                    <button type="button" class="password-toggle" onclick="togglePassword('signupConfirmPassword')">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <button type="submit" class="auth-btn primary">
+                                <i class="fas fa-user-plus"></i>
+                                Create Account
+                            </button>
+                        </form>
+                        
+                        <div class="auth-divider">
+                            <span>or</span>
+                        </div>
+                        
+                        <button class="auth-btn google" onclick="signUpWithGoogle()">
+                            <i class="fab fa-google"></i>
+                            Sign up with Google
+                        </button>
+                        
+                        <div class="auth-switch">
+                            Already have an account? <a href="#" onclick="showLoginForm()">Sign in</a>
+                        </div>
+                    </div>
+
+                    <!-- User Profile -->
+                    <div class="auth-card" id="userProfile" style="display: none;">
+                        <div class="profile-header">
+                            <div class="profile-avatar">
+                                <img id="userAvatar" src="https://via.placeholder.com/64" alt="User Avatar">
+                            </div>
+                            <div class="profile-info">
+                                <h3 id="userName">User Name</h3>
+                                <p id="userEmail">user@example.com</p>
+                            </div>
+                        </div>
+                        
+                        <div class="profile-stats">
+                            <div class="profile-stat">
+                                <span class="stat-number" id="totalFiles">0</span>
+                                <span class="stat-label">Files</span>
+                            </div>
+                            <div class="profile-stat">
+                                <span class="stat-number" id="totalStorage">0 MB</span>
+                                <span class="stat-label">Storage</span>
+                            </div>
+                        </div>
+                        
+                        <div class="profile-actions">
+                            <button class="action-btn primary" onclick="editProfile()">
+                                <i class="fas fa-edit"></i>
+                                Edit Profile
+                            </button>
+                            <button class="action-btn secondary" onclick="signOut()">
+                                <i class="fas fa-sign-out-alt"></i>
+                                Sign Out
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
