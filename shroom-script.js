@@ -376,10 +376,18 @@ function showSharedFileModal(file) {
     const fileType = document.getElementById('sharedFileType');
     const downloadBtn = document.getElementById('sharedFileDownload');
     const archiveBtn = document.getElementById('sharedFileArchive');
+    const closeBtn = modal?.querySelector('.modal-close');
     
     // Check if all elements exist before proceeding
     if (!modal || !fileName || !fileSize || !fileType || !downloadBtn || !archiveBtn) {
-        console.error('Shared file modal elements not found');
+        console.error('Shared file modal elements not found:', {
+            modal: !!modal,
+            fileName: !!fileName,
+            fileSize: !!fileSize,
+            fileType: !!fileType,
+            downloadBtn: !!downloadBtn,
+            archiveBtn: !!archiveBtn
+        });
         showToast('Error loading shared file modal', 'error');
         return;
     }
@@ -391,6 +399,13 @@ function showSharedFileModal(file) {
     // Set up download button
     downloadBtn.onclick = () => downloadSharedFile(file);
     
+    // Set up close button
+    if (closeBtn) {
+        closeBtn.onclick = () => {
+            modal.style.display = 'none';
+        };
+    }
+    
     // Show/hide archive button based on file type
     if (fileUtils.isArchive({ name: file.original_name, type: file.type })) {
         archiveBtn.style.display = 'block';
@@ -400,6 +415,13 @@ function showSharedFileModal(file) {
     }
     
     modal.style.display = 'flex';
+    
+    // Add click outside to close
+    modal.onclick = (e) => {
+        if (e.target === modal) {
+            modal.style.display = 'none';
+        }
+    };
 }
 
 // Show shared file download page for non-logged-in users
