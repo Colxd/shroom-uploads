@@ -468,6 +468,7 @@ function setupEventListeners() {
         uploadArea.addEventListener('dragover', handleDragOver);
         uploadArea.addEventListener('drop', handleDrop);
         uploadArea.addEventListener('dragleave', handleDragLeave);
+        uploadArea.addEventListener('click', handleUploadAreaClick);
     }
 
     // Clipboard paste
@@ -512,19 +513,101 @@ function handleSort(event) {
 
 function handleDragOver(event) {
     event.preventDefault();
+    event.stopPropagation();
     event.currentTarget.classList.add('drag-over');
 }
 
 function handleDrop(event) {
     event.preventDefault();
+    event.stopPropagation();
     event.currentTarget.classList.remove('drag-over');
     
     const files = Array.from(event.dataTransfer.files);
-    uploadFiles(files);
+    
+    if (files.length === 0) {
+        showToast('No files were dropped', 'warning');
+        return;
+    }
+    
+    // Validate files before uploading
+    const validFiles = files.filter(file => {
+        const validation = fileUtils.validateFile(file);
+        if (!validation.valid) {
+            showToast(`Skipping ${file.name}: ${validation.error}`, 'warning');
+            return false;
+        }
+        return true;
+    });
+    
+    if (validFiles.length > 0) {
+        uploadFiles(validFiles);
+    }
 }
 
 function handleDragLeave(event) {
     event.currentTarget.classList.remove('drag-over');
+}
+
+// Handle click on upload area
+function handleUploadAreaClick(event) {
+    // Trigger file input click
+    const fileInput = document.getElementById('fileInput');
+    if (fileInput) {
+        fileInput.click();
+    }
+}
+
+// Upload Progress Functions
+function showUploadProgress() {
+    const uploadProgress = document.getElementById('uploadProgress');
+    if (uploadProgress) {
+        uploadProgress.style.display = 'block';
+        updateUploadProgress(null, 0, 1);
+    }
+}
+
+function hideUploadProgress() {
+    const uploadProgress = document.getElementById('uploadProgress');
+    if (uploadProgress) {
+        uploadProgress.style.display = 'none';
+    }
+}
+
+function updateUploadProgress(file, currentIndex, totalFiles) {
+    const progressText = document.getElementById('progressText');
+    const progressFill = document.getElementById('progressFill');
+    const uploadFileName = document.getElementById('uploadFileName');
+    const uploadFileSize = document.getElementById('uploadFileSize');
+    const uploadSpeed = document.getElementById('uploadSpeed');
+    
+    if (file) {
+        // Update file info
+        uploadFileName.textContent = file.name;
+        uploadFileSize.textContent = fileUtils.formatFileSize(file.size);
+        
+        // Calculate progress percentage
+        const progress = ((currentIndex + 1) / totalFiles) * 100;
+        progressText.textContent = `${Math.round(progress)}%`;
+        progressFill.style.width = `${progress}%`;
+        
+        // Simulate upload speed (in real implementation, you'd track actual speed)
+        const speed = Math.floor(Math.random() * 500) + 100; // Random speed between 100-600 KB/s
+        uploadSpeed.textContent = `${speed} KB/s`;
+    } else {
+        // Reset progress
+        progressText.textContent = '0%';
+        progressFill.style.width = '0%';
+        uploadFileName.textContent = 'filename.ext';
+        uploadFileSize.textContent = '0 KB';
+        uploadSpeed.textContent = '0 KB/s';
+    }
+}
+
+function cancelUpload() {
+    // This would need to be implemented with actual upload cancellation
+    // For now, just hide the progress
+    hideUploadProgress();
+    showToast('Upload cancelled', 'info');
 }
 
 function handlePaste(event) {
@@ -688,13 +771,31 @@ async function uploadFiles(files) {
 
     if (files.length === 0) return;
 
+    // Show upload progress
+    showUploadProgress();
+    
+    let uploadedCount = 0;
     for (const file of files) {
-        await uploadFile(file);
+        await uploadFile(file, uploadedCount, files.length);
+        uploadedCount++;
     }
+    
+    // Hide upload progress when done
+    hideUploadProgress();
+    
+    // Show success message
+    if (files.length === 1) {
+        showToast('File uploaded successfully!', 'success');
+    } else {
+        showToast(`${files.length} files uploaded successfully!`, 'success');
+    }
+    
+    // Refresh files list
+    loadFiles();
 }
 
 // Upload single file
-async function uploadFile(file) {
+async function uploadFile(file, currentIndex = 0, totalFiles = 1) {
     const validation = fileUtils.validateFile(file);
     if (!validation.valid) {
         showToast(validation.error, 'error');
@@ -702,6 +803,9 @@ async function uploadFile(file) {
     }
 
     try {
+        // Update progress display
+        updateUploadProgress(file, currentIndex, totalFiles);
+        
         const timestamp = Date.now();
         const randomId = Math.random().toString(36).substring(2, 12);
         const fileExtension = file.name.split('.').pop();
@@ -739,7 +843,6 @@ async function uploadFile(file) {
 
         if (insertError) throw insertError;
 
-        showToast('File uploaded successfully!', 'success');
         return insertData[0];
     } catch (error) {
         console.error('Upload error:', error);
