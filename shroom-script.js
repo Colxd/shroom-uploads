@@ -411,9 +411,10 @@ function showSharedFileModal(file) {
     const fileName = document.getElementById('sharedFileName');
     const fileSize = document.getElementById('sharedFileSize');
     const fileType = document.getElementById('sharedFileType');
+    const sharedFileIcon = document.getElementById('sharedFileIcon');
     
-    if (!modal || !fileName || !fileSize || !fileType) {
-        console.error('Modal elements not found:', { modal, fileName, fileSize, fileType });
+    if (!modal || !fileName || !fileSize || !fileType || !sharedFileIcon) {
+        console.error('Modal elements not found:', { modal, fileName, fileSize, fileType, sharedFileIcon });
         return;
     }
     
@@ -422,6 +423,9 @@ function showSharedFileModal(file) {
     fileName.textContent = file.original_name;
     fileSize.textContent = fileUtils.formatFileSize(file.size);
     fileType.textContent = file.type;
+    
+    // Set the appropriate file icon based on file type
+    sharedFileIcon.className = `fas ${fileUtils.getFileIcon(file.type)}`;
     
     // Store the file data in the modal for the download button
     modal.dataset.sharedFile = JSON.stringify(file);

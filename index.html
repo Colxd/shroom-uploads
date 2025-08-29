@@ -467,21 +467,39 @@
 
     <!-- Shared File Modal -->
     <div id="sharedFileModal" class="modal" style="display: none;">
-        <div class="modal-content">
+        <div class="modal-content shared-file-modal">
             <div class="modal-header">
-                <h3>Shared File</h3>
+                <div class="header-content">
+                    <div class="header-icon">
+                        <i class="fas fa-share-alt"></i>
+                    </div>
+                    <h3>Shared File</h3>
+                </div>
                 <button class="modal-close">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="file-info">
-                    <h4 id="sharedFileName">filename.ext</h4>
-                    <p id="sharedFileSize">0 KB</p>
-                    <p id="sharedFileType">application/octet-stream</p>
+                <div class="shared-file-preview">
+                    <div class="file-icon-large">
+                        <i id="sharedFileIcon" class="fas fa-file"></i>
+                    </div>
+                    <div class="shared-file-details">
+                        <h4 id="sharedFileName">filename.ext</h4>
+                        <div class="file-meta">
+                            <div class="meta-item">
+                                <i class="fas fa-hdd"></i>
+                                <span id="sharedFileSize">0 KB</span>
+                            </div>
+                            <div class="meta-item">
+                                <i class="fas fa-tag"></i>
+                                <span id="sharedFileType">application/octet-stream</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-actions">
-                    <button class="action-btn" onclick="downloadSharedFileFromModal()">
+                    <button class="action-btn primary" onclick="downloadSharedFileFromModal()">
                         <i class="fas fa-download"></i>
-                        Download
+                        Download File
                     </button>
                 </div>
             </div>

@@ -1550,6 +1550,199 @@ main {
     flex: 1;
 }
 
+/* Enhanced Shared File Modal Styles */
+.shared-file-modal {
+    max-width: 500px;
+    border: 2px solid var(--primary-orange);
+    box-shadow: 0 0 30px rgba(255, 165, 0, 0.3);
+}
+
+.shared-file-modal .modal-header {
+    background: linear-gradient(135deg, var(--primary-orange), #ff8c00);
+    border-bottom: 2px solid var(--primary-orange);
+    padding: 1.5rem;
+}
+
+.shared-file-modal .header-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.shared-file-modal .header-icon {
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2rem;
+}
+
+.shared-file-modal .modal-header h3 {
+    color: white;
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.shared-file-modal .modal-close {
+    color: white;
+    font-size: 1.8rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+}
+
+.shared-file-modal .modal-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: rotate(90deg) scale(1.1);
+}
+
+.shared-file-modal .modal-body {
+    padding: 2rem;
+    background: var(--dark-bg-primary);
+}
+
+.shared-file-preview {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: var(--dark-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+}
+
+.shared-file-preview::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary-orange), #ff8c00);
+}
+
+.file-icon-large {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, var(--primary-orange), #ff8c00);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 2.5rem;
+    box-shadow: 0 4px 15px rgba(255, 165, 0, 0.3);
+    flex-shrink: 0;
+}
+
+.shared-file-details {
+    flex: 1;
+}
+
+.shared-file-details h4 {
+    color: var(--text-primary);
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin: 0 0 1rem 0;
+    word-break: break-word;
+}
+
+.file-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+.meta-item i {
+    color: var(--primary-orange);
+    font-size: 1rem;
+    width: 16px;
+    text-align: center;
+}
+
+.shared-file-modal .modal-actions {
+    justify-content: center;
+    margin-top: 0;
+}
+
+.shared-file-modal .action-btn.primary {
+    background: linear-gradient(135deg, var(--primary-orange), #ff8c00);
+    border: none;
+    color: white;
+    font-weight: 600;
+    font-size: 1.1rem;
+    padding: 1rem 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(255, 165, 0, 0.3);
+    transition: all var(--transition-normal);
+    min-width: 200px;
+}
+
+.shared-file-modal .action-btn.primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 165, 0, 0.4);
+    background: linear-gradient(135deg, #ff8c00, var(--primary-orange));
+}
+
+.shared-file-modal .action-btn.primary:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 10px rgba(255, 165, 0, 0.3);
+}
+
+/* Responsive design for shared file modal */
+@media (max-width: 768px) {
+    .shared-file-modal {
+        margin: 1rem;
+        max-width: calc(100vw - 2rem);
+    }
+    
+    .shared-file-preview {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+    }
+    
+    .file-icon-large {
+        width: 60px;
+        height: 60px;
+        font-size: 2rem;
+    }
+    
+    .shared-file-details h4 {
+        font-size: 1.2rem;
+    }
+    
+    .file-meta {
+        align-items: center;
+    }
+    
+    .shared-file-modal .action-btn.primary {
+        width: 100%;
+        min-width: auto;
+    }
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     header {
