@@ -313,9 +313,16 @@ async function handleSharedFile() {
     const urlParams = new URLSearchParams(window.location.search);
     const shareId = urlParams.get('share');
     
-    if (!shareId) return;
+    console.log('Checking for shared file with ID:', shareId);
+    
+    if (!shareId) {
+        console.log('No share ID found in URL');
+        return;
+    }
 
     try {
+        console.log('Fetching file with share_id:', shareId);
+        
         // Get file by share ID (this bypasses user isolation for shared files)
         const { data: files, error } = await window.supabase
             .from('files')
@@ -323,12 +330,19 @@ async function handleSharedFile() {
             .eq('share_id', shareId)
             .limit(1);
 
-        if (error) throw error;
+        if (error) {
+            console.error('Supabase error:', error);
+            throw error;
+        }
+
+        console.log('Files found:', files);
 
         if (files && files.length > 0) {
             const sharedFile = files[0];
+            console.log('Showing shared file modal for:', sharedFile);
             showSharedFileModal(sharedFile);
         } else {
+            console.log('No files found with share_id:', shareId);
             showToast('Shared file not found', 'error');
         }
     } catch (error) {
@@ -339,10 +353,19 @@ async function handleSharedFile() {
 
 // Show shared file modal
 function showSharedFileModal(file) {
+    console.log('showSharedFileModal called with file:', file);
+    
     const modal = document.getElementById('sharedFileModal');
     const fileName = document.getElementById('sharedFileName');
     const fileSize = document.getElementById('sharedFileSize');
     const fileType = document.getElementById('sharedFileType');
+    
+    if (!modal || !fileName || !fileSize || !fileType) {
+        console.error('Modal elements not found:', { modal, fileName, fileSize, fileType });
+        return;
+    }
+    
+    console.log('Setting modal content for file:', file.original_name);
     
     fileName.textContent = file.original_name;
     fileSize.textContent = fileUtils.formatFileSize(file.size);
@@ -351,6 +374,7 @@ function showSharedFileModal(file) {
     // Store the file data in the modal for the download button
     modal.dataset.sharedFile = JSON.stringify(file);
     
+    console.log('Showing modal');
     modal.style.display = 'flex';
 }
 
@@ -1063,18 +1087,27 @@ async function downloadFileFromCard(fileId) {
 }
 
 async function copyShareLinkFromCard(fileId) {
+    console.log('copyShareLinkFromCard called with fileId:', fileId);
+    
     const file = currentFiles.find(f => f.id === parseInt(fileId));
     if (!file) {
+        console.error('File not found for ID:', fileId);
         showToast('File not found', 'error');
         return;
     }
 
+    console.log('Found file for sharing:', file);
+    console.log('File share_id:', file.share_id);
+
     const shareUrl = generateShareUrl(file.share_id);
+    console.log('Generated share URL:', shareUrl);
     
     try {
         await navigator.clipboard.writeText(shareUrl);
+        console.log('Share URL copied to clipboard successfully');
         showToast('Share link copied to clipboard!', 'success');
     } catch (error) {
+        console.log('Clipboard API failed, using fallback method');
         // Fallback for older browsers
         const textArea = document.createElement('textarea');
         textArea.value = shareUrl;
@@ -1256,10 +1289,16 @@ async function openArchiveContents(fileId) {
 
 // Utility functions
 function generateShareUrl(shareId) {
+    console.log('generateShareUrl called with shareId:', shareId);
+    
     const baseUrl = window.location.protocol === 'file:' ? 
         'https://shroomuploads.online' : 
         window.location.origin;
-    return `${baseUrl}?share=${shareId}`;
+    
+    const shareUrl = `${baseUrl}?share=${shareId}`;
+    console.log('Generated share URL:', shareUrl);
+    
+    return shareUrl;
 }
 
 function manualLoadFiles() {
@@ -1357,6 +1396,29 @@ window.copyShareLinkFromCard = copyShareLinkFromCard;
 window.deleteFileFromCard = deleteFileFromCard;
 window.downloadSharedFileFromModal = downloadSharedFileFromModal;
 window.showDeleteConfirmation = showDeleteConfirmation;
+
+// Test function for debugging share functionality
+window.testShareLink = function() {
+    console.log('Testing share link functionality...');
+    
+    // Get the first file from current files
+    if (currentFiles && currentFiles.length > 0) {
+        const testFile = currentFiles[0];
+        console.log('Testing with file:', testFile);
+        
+        const shareUrl = generateShareUrl(testFile.share_id);
+        console.log('Generated share URL:', shareUrl);
+        
+        // Copy to clipboard
+        navigator.clipboard.writeText(shareUrl).then(() => {
+            showToast('Test share link copied to clipboard!', 'success');
+        }).catch(() => {
+            showToast('Share URL: ' + shareUrl, 'info');
+        });
+    } else {
+        showToast('No files available to test sharing', 'error');
+    }
+};
 window.confirmDelete = confirmDelete;
 window.cancelDelete = cancelDelete;
 window.showClearAllConfirmation = showClearAllConfirmation;
