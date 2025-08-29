@@ -588,27 +588,49 @@ function updateUploadProgress(file, currentIndex, totalFiles, progress = 0, spee
         uploadFileName.textContent = file.name;
         uploadFileSize.textContent = fileUtils.formatFileSize(file.size);
         
-        // Use provided progress or calculate based on file index
-        const finalProgress = progress || ((currentIndex + 1) / totalFiles) * 100;
-        progressText.textContent = `${Math.round(finalProgress)}%`;
-        progressFill.style.width = `${finalProgress}%`;
+        // Calculate overall progress (file progress + completed files)
+        const fileProgress = progress || 0;
+        const completedFilesProgress = (currentIndex / totalFiles) * 100;
+        const currentFileProgress = (fileProgress / 100) * (1 / totalFiles) * 100;
+        const overallProgress = completedFilesProgress + currentFileProgress;
+        
+        progressText.textContent = `${Math.round(overallProgress)}%`;
+        progressFill.style.width = `${overallProgress}%`;
         
         // Use provided speed or generate realistic speed
         const finalSpeed = speed || Math.floor(Math.random() * 500) + 100;
         uploadSpeed.textContent = `${fileUtils.formatFileSize(finalSpeed)}/s`;
     } else {
-        // Reset progress
-        progressText.textContent = `${Math.round(progress)}%`;
-        progressFill.style.width = `${progress}%`;
-        uploadFileName.textContent = 'filename.ext';
-        uploadFileSize.textContent = '0 KB';
-        uploadSpeed.textContent = '0 KB/s';
+        // For completion or reset
+        const finalProgress = progress || 0;
+        progressText.textContent = `${Math.round(finalProgress)}%`;
+        progressFill.style.width = `${finalProgress}%`;
+        
+        if (progress === 100) {
+            uploadFileName.textContent = 'Upload Complete!';
+            uploadFileSize.textContent = 'All files uploaded';
+            uploadSpeed.textContent = 'Success';
+        } else {
+            uploadFileName.textContent = 'filename.ext';
+            uploadFileSize.textContent = '0 KB';
+            uploadSpeed.textContent = '0 KB/s';
+        }
     }
 }
 
+// Global variable to track upload cancellation
+let isUploadCancelled = false;
+let currentProgressInterval = null;
+
 function cancelUpload() {
-    // This would need to be implemented with actual upload cancellation
-    // For now, just hide the progress
+    isUploadCancelled = true;
+    
+    // Clear any running progress intervals
+    if (currentProgressInterval) {
+        clearInterval(currentProgressInterval);
+        currentProgressInterval = null;
+    }
+    
     hideUploadProgress();
     showToast('Upload cancelled', 'info');
 }
@@ -776,15 +798,30 @@ async function uploadFiles(files) {
 
     // Show upload progress
     showUploadProgress();
+    isUploadCancelled = false;
     
     let uploadedCount = 0;
-    let totalProgress = 0;
     
     for (const file of files) {
-        const fileProgress = await uploadFileWithProgress(file, uploadedCount, files.length);
-        if (fileProgress) {
-            uploadedCount++;
-            totalProgress += fileProgress;
+        if (isUploadCancelled) {
+            break;
+        }
+        
+        try {
+            // Update progress for current file
+            updateUploadProgress(file, uploadedCount, files.length, 0);
+            
+            // Upload the file
+            const result = await uploadFileWithProgress(file, uploadedCount, files.length);
+            if (result) {
+                uploadedCount++;
+            }
+        } catch (error) {
+            if (error.message === 'Upload cancelled') {
+                break;
+            }
+            console.error('Upload failed for file:', file.name, error);
+            showToast(`Failed to upload ${file.name}`, 'error');
         }
     }
     
@@ -796,15 +833,15 @@ async function uploadFiles(files) {
         hideUploadProgress();
         
         // Show success message
-        if (files.length === 1) {
+        if (uploadedCount === 1) {
             showToast('File uploaded successfully!', 'success');
         } else {
-            showToast(`${files.length} files uploaded successfully!`, 'success');
+            showToast(`${uploadedCount} files uploaded successfully!`, 'success');
         }
         
         // Refresh files list
         loadFiles();
-    }, 1000);
+    }, 1500);
 }
 
 // Upload single file with progress tracking
@@ -821,48 +858,44 @@ async function uploadFileWithProgress(file, currentIndex = 0, totalFiles = 1) {
         const fileExtension = file.name.split('.').pop();
         const fileName = `${timestamp}_${randomId}.${fileExtension}`;
         
-        // Start progress tracking
-        let uploadedBytes = 0;
-        const totalBytes = file.size;
         const startTime = Date.now();
+        let progress = 0;
         
-        // Create a custom upload with progress
-        const uploadPromise = new Promise((resolve, reject) => {
-            // Simulate progress updates (since Supabase doesn't provide progress callbacks)
-            const progressInterval = setInterval(() => {
-                if (uploadedBytes < totalBytes) {
-                    // Simulate realistic upload progress
-                    const remainingBytes = totalBytes - uploadedBytes;
-                    const increment = Math.min(remainingBytes * 0.1, remainingBytes * 0.05 + Math.random() * 10000);
-                    uploadedBytes += increment;
-                    
-                    const progress = Math.min((uploadedBytes / totalBytes) * 100, 95); // Cap at 95% until complete
-                    const elapsed = (Date.now() - startTime) / 1000;
-                    const speed = uploadedBytes / elapsed;
-                    
-                    updateUploadProgress(file, currentIndex, totalFiles, progress, speed);
-                }
-            }, 100);
+        // Simulate progress updates during upload
+        currentProgressInterval = setInterval(() => {
+            if (isUploadCancelled) {
+                clearInterval(currentProgressInterval);
+                currentProgressInterval = null;
+                return;
+            }
             
-            // Upload file to Supabase Storage
-            window.supabase.storage
-                .from('uploads')
-                .upload(fileName, file)
-                .then(({ data, error }) => {
-                    clearInterval(progressInterval);
-                    if (error) {
-                        reject(error);
-                    } else {
-                        // Complete the progress
-                        updateUploadProgress(file, currentIndex, totalFiles, 100);
-                        resolve(data);
-                    }
-                })
-                .catch(reject);
-        });
+            if (progress < 90) {
+                progress += Math.random() * 15 + 5; // Random progress increment
+                progress = Math.min(progress, 90); // Cap at 90% until complete
+                
+                const elapsed = (Date.now() - startTime) / 1000;
+                const speed = (file.size * progress / 100) / elapsed;
+                
+                updateUploadProgress(file, currentIndex, totalFiles, progress, speed);
+            }
+        }, 200);
+        
+        // Upload file to Supabase Storage
+        const { data: uploadData, error: uploadError } = await window.supabase.storage
+            .from('uploads')
+            .upload(fileName, file);
 
-        const { data: uploadData, error: uploadError } = await uploadPromise;
+        clearInterval(currentProgressInterval);
+        currentProgressInterval = null;
+        
+        if (isUploadCancelled) {
+            throw new Error('Upload cancelled');
+        }
+        
         if (uploadError) throw uploadError;
+
+        // Complete progress to 100%
+        updateUploadProgress(file, currentIndex, totalFiles, 100);
 
         // Get public URL
         const { data: urlData } = window.supabase.storage
