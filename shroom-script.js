@@ -4,6 +4,52 @@ let selectedFiles = new Set();
 let isBulkSelectMode = false;
 let currentUser = null;
 let pendingRegistration = null; // Store registration data for auto-login
+let isUploadCancelled = false;
+let currentProgressInterval = null;
+
+// Check for shared file access immediately on page load
+document.addEventListener('DOMContentLoaded', async () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const shareId = urlParams.get('share');
+    
+    if (shareId) {
+        console.log('Share ID detected on page load:', shareId);
+        // Show loading state immediately
+        showToast('Loading shared file...', 'info');
+        
+        // Try to load the shared file immediately
+        try {
+            const { data: files, error } = await window.supabase
+                .from('files')
+                .select('*')
+                .eq('share_id', shareId)
+                .limit(1);
+
+            if (error) {
+                console.error('Error loading shared file on page load:', error);
+                showToast('Failed to load shared file', 'error');
+                return;
+            }
+
+            if (files && files.length > 0) {
+                const sharedFile = files[0];
+                console.log('Shared file found on page load:', sharedFile);
+                // Small delay to ensure DOM is ready
+                setTimeout(() => {
+                    showSharedFileModal(sharedFile);
+                }, 100);
+                window.sharedFileProcessed = true; // Mark as processed
+            } else {
+                console.log('No shared file found with ID:', shareId);
+                showToast('Shared file not found', 'error');
+                window.sharedFileProcessed = true; // Mark as processed even if not found
+            }
+        } catch (error) {
+            console.error('Error on page load shared file check:', error);
+            showToast('Failed to load shared file', 'error');
+        }
+    }
+});
 
 // Authentication functions
 const auth = {
@@ -320,6 +366,12 @@ async function handleSharedFile() {
         return;
     }
 
+    // Check if we already processed this share ID on page load
+    if (window.sharedFileProcessed) {
+        console.log('Shared file already processed on page load, skipping');
+        return;
+    }
+
     try {
         console.log('Fetching file with share_id:', shareId);
         
@@ -457,11 +509,11 @@ async function initializeApp() {
             uiUtils.updateUIForGuest();
         }
         
-        // Check for shared file access
-        await handleSharedFile();
-        
         // Set up event listeners
         setupEventListeners();
+        
+        // Check for shared file access (moved after event listeners for instant display)
+        await handleSharedFile();
         
         console.log('App initialized successfully');
     } catch (error) {
