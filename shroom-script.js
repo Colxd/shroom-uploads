@@ -343,23 +343,13 @@ function showSharedFileModal(file) {
     const fileName = document.getElementById('sharedFileName');
     const fileSize = document.getElementById('sharedFileSize');
     const fileType = document.getElementById('sharedFileType');
-    const downloadBtn = document.getElementById('sharedFileDownload');
-    const archiveBtn = document.getElementById('sharedFileArchive');
     
     fileName.textContent = file.original_name;
     fileSize.textContent = fileUtils.formatFileSize(file.size);
     fileType.textContent = file.type;
     
-    // Set up download button
-    downloadBtn.onclick = () => downloadSharedFile(file);
-    
-    // Show/hide archive button based on file type
-    if (fileUtils.isArchive({ name: file.original_name, type: file.type })) {
-        archiveBtn.style.display = 'block';
-        archiveBtn.onclick = () => openArchiveContents(file.id);
-    } else {
-        archiveBtn.style.display = 'none';
-    }
+    // Store the file data in the modal for the download button
+    modal.dataset.sharedFile = JSON.stringify(file);
     
     modal.style.display = 'flex';
 }
@@ -383,6 +373,19 @@ async function downloadSharedFile(file) {
     } catch (error) {
         console.error('Download error:', error);
         showToast('Download failed', 'error');
+    }
+}
+
+// Handle shared file download from modal button
+function downloadSharedFileFromModal() {
+    const modal = document.getElementById('sharedFileModal');
+    const fileData = modal.dataset.sharedFile;
+    
+    if (fileData) {
+        const file = JSON.parse(fileData);
+        downloadSharedFile(file);
+    } else {
+        showToast('File data not found', 'error');
     }
 }
 
@@ -573,7 +576,7 @@ function hideUploadProgress() {
     }
 }
 
-function updateUploadProgress(file, currentIndex, totalFiles) {
+function updateUploadProgress(file, currentIndex, totalFiles, progress = 0, speed = 0) {
     const progressText = document.getElementById('progressText');
     const progressFill = document.getElementById('progressFill');
     const uploadFileName = document.getElementById('uploadFileName');
@@ -585,18 +588,18 @@ function updateUploadProgress(file, currentIndex, totalFiles) {
         uploadFileName.textContent = file.name;
         uploadFileSize.textContent = fileUtils.formatFileSize(file.size);
         
-        // Calculate progress percentage
-        const progress = ((currentIndex + 1) / totalFiles) * 100;
-        progressText.textContent = `${Math.round(progress)}%`;
-        progressFill.style.width = `${progress}%`;
+        // Use provided progress or calculate based on file index
+        const finalProgress = progress || ((currentIndex + 1) / totalFiles) * 100;
+        progressText.textContent = `${Math.round(finalProgress)}%`;
+        progressFill.style.width = `${finalProgress}%`;
         
-        // Simulate upload speed (in real implementation, you'd track actual speed)
-        const speed = Math.floor(Math.random() * 500) + 100; // Random speed between 100-600 KB/s
-        uploadSpeed.textContent = `${speed} KB/s`;
+        // Use provided speed or generate realistic speed
+        const finalSpeed = speed || Math.floor(Math.random() * 500) + 100;
+        uploadSpeed.textContent = `${fileUtils.formatFileSize(finalSpeed)}/s`;
     } else {
         // Reset progress
-        progressText.textContent = '0%';
-        progressFill.style.width = '0%';
+        progressText.textContent = `${Math.round(progress)}%`;
+        progressFill.style.width = `${progress}%`;
         uploadFileName.textContent = 'filename.ext';
         uploadFileSize.textContent = '0 KB';
         uploadSpeed.textContent = '0 KB/s';
@@ -775,27 +778,37 @@ async function uploadFiles(files) {
     showUploadProgress();
     
     let uploadedCount = 0;
+    let totalProgress = 0;
+    
     for (const file of files) {
-        await uploadFile(file, uploadedCount, files.length);
-        uploadedCount++;
+        const fileProgress = await uploadFileWithProgress(file, uploadedCount, files.length);
+        if (fileProgress) {
+            uploadedCount++;
+            totalProgress += fileProgress;
+        }
     }
     
-    // Hide upload progress when done
-    hideUploadProgress();
+    // Complete progress
+    updateUploadProgress(null, files.length, files.length, 100);
     
-    // Show success message
-    if (files.length === 1) {
-        showToast('File uploaded successfully!', 'success');
-    } else {
-        showToast(`${files.length} files uploaded successfully!`, 'success');
-    }
-    
-    // Refresh files list
-    loadFiles();
+    // Hide upload progress after a short delay
+    setTimeout(() => {
+        hideUploadProgress();
+        
+        // Show success message
+        if (files.length === 1) {
+            showToast('File uploaded successfully!', 'success');
+        } else {
+            showToast(`${files.length} files uploaded successfully!`, 'success');
+        }
+        
+        // Refresh files list
+        loadFiles();
+    }, 1000);
 }
 
-// Upload single file
-async function uploadFile(file, currentIndex = 0, totalFiles = 1) {
+// Upload single file with progress tracking
+async function uploadFileWithProgress(file, currentIndex = 0, totalFiles = 1) {
     const validation = fileUtils.validateFile(file);
     if (!validation.valid) {
         showToast(validation.error, 'error');
@@ -803,19 +816,52 @@ async function uploadFile(file, currentIndex = 0, totalFiles = 1) {
     }
 
     try {
-        // Update progress display
-        updateUploadProgress(file, currentIndex, totalFiles);
-        
         const timestamp = Date.now();
         const randomId = Math.random().toString(36).substring(2, 12);
         const fileExtension = file.name.split('.').pop();
         const fileName = `${timestamp}_${randomId}.${fileExtension}`;
         
-        // Upload file to Supabase Storage
-        const { data: uploadData, error: uploadError } = await window.supabase.storage
-            .from('uploads')
-            .upload(fileName, file);
+        // Start progress tracking
+        let uploadedBytes = 0;
+        const totalBytes = file.size;
+        const startTime = Date.now();
+        
+        // Create a custom upload with progress
+        const uploadPromise = new Promise((resolve, reject) => {
+            // Simulate progress updates (since Supabase doesn't provide progress callbacks)
+            const progressInterval = setInterval(() => {
+                if (uploadedBytes < totalBytes) {
+                    // Simulate realistic upload progress
+                    const remainingBytes = totalBytes - uploadedBytes;
+                    const increment = Math.min(remainingBytes * 0.1, remainingBytes * 0.05 + Math.random() * 10000);
+                    uploadedBytes += increment;
+                    
+                    const progress = Math.min((uploadedBytes / totalBytes) * 100, 95); // Cap at 95% until complete
+                    const elapsed = (Date.now() - startTime) / 1000;
+                    const speed = uploadedBytes / elapsed;
+                    
+                    updateUploadProgress(file, currentIndex, totalFiles, progress, speed);
+                }
+            }, 100);
+            
+            // Upload file to Supabase Storage
+            window.supabase.storage
+                .from('uploads')
+                .upload(fileName, file)
+                .then(({ data, error }) => {
+                    clearInterval(progressInterval);
+                    if (error) {
+                        reject(error);
+                    } else {
+                        // Complete the progress
+                        updateUploadProgress(file, currentIndex, totalFiles, 100);
+                        resolve(data);
+                    }
+                })
+                .catch(reject);
+        });
 
+        const { data: uploadData, error: uploadError } = await uploadPromise;
         if (uploadError) throw uploadError;
 
         // Get public URL
@@ -849,6 +895,11 @@ async function uploadFile(file, currentIndex = 0, totalFiles = 1) {
         showToast('Upload failed: ' + error.message, 'error');
         return null;
     }
+}
+
+// Upload single file (legacy function for compatibility)
+async function uploadFile(file, currentIndex = 0, totalFiles = 1) {
+    return await uploadFileWithProgress(file, currentIndex, totalFiles);
 }
 
 // Render files in the UI
@@ -1271,6 +1322,7 @@ window.deleteSelectedFiles = bulkUtils.deleteSelectedFiles;
 window.downloadFileFromCard = downloadFileFromCard;
 window.copyShareLinkFromCard = copyShareLinkFromCard;
 window.deleteFileFromCard = deleteFileFromCard;
+window.downloadSharedFileFromModal = downloadSharedFileFromModal;
 window.showDeleteConfirmation = showDeleteConfirmation;
 window.confirmDelete = confirmDelete;
 window.cancelDelete = cancelDelete;
