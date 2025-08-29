@@ -113,13 +113,16 @@ header {
     width: 32px;
     height: 32px;
     border-radius: 6px;
-    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--dark-surface);
+    border: 1px solid var(--border-color);
 }
 
-.logo-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+.logo-icon i {
+    font-size: 1.5rem;
+    color: var(--primary-orange);
 }
 
 .logo-text {
