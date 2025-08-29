@@ -40,6 +40,9 @@
     <!-- Header -->
     <header>
         <div class="logo">
+            <div class="logo-icon">
+                <img src="https://cdn.discordapp.com/attachments/1265508598008512545/1410120008238895154/shroom.png?ex=68afdc18&is=68ae8a98&hm=db8b2d4e3a17c8f67753ce2f8467d36d1aae560dab001e6ae59ec90496426a77&" alt="Shroom Uploads Logo" class="logo-image">
+            </div>
             <span class="logo-text">Shroom Uploads</span>
         </div>
         <nav>
@@ -203,14 +206,6 @@
                         <p>Shared Files</p>
                     </div>
                 </div>
-            </div>
-
-            <div class="storage-usage">
-                <h3>Storage Usage</h3>
-                <div class="storage-bar">
-                    <div class="storage-fill" id="statsStorageFill" style="width: 0%"></div>
-                </div>
-                <p class="storage-text">100 MB total storage • <span id="statsStorageUsed">0 KB</span> used</p>
             </div>
 
             <div class="recent-files">
@@ -465,13 +460,9 @@
                     <p id="sharedFileType">application/octet-stream</p>
                 </div>
                 <div class="modal-actions">
-                    <button id="sharedFileDownload" class="action-btn primary">
+                    <button class="action-btn" onclick="downloadSharedFile()">
                         <i class="fas fa-download"></i>
                         Download
-                    </button>
-                    <button id="sharedFileArchive" class="action-btn secondary" style="display: none;">
-                        <i class="fas fa-archive"></i>
-                        View Contents
                     </button>
                 </div>
             </div>

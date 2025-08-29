@@ -5,27 +5,6 @@ let isBulkSelectMode = false;
 let currentUser = null;
 let pendingRegistration = null; // Store registration data for auto-login
 
-// Global error handler to ensure all errors show as toasts in top right
-window.addEventListener('error', function(event) {
-    showToast('An error occurred: ' + (event.error?.message || event.message || 'Unknown error'), 'error');
-});
-
-// Global unhandled promise rejection handler
-window.addEventListener('unhandledrejection', function(event) {
-    showToast('An error occurred: ' + (event.reason?.message || 'Unknown error'), 'error');
-});
-
-// Intercept console errors and show them as toasts
-const originalConsoleError = console.error;
-console.error = function(...args) {
-    originalConsoleError.apply(console, args);
-    const errorMessage = args.map(arg => 
-        typeof arg === 'string' ? arg : 
-        arg?.message || arg?.toString() || 'Unknown error'
-    ).join(' ');
-    showToast('Error: ' + errorMessage, 'error');
-};
-
 // Authentication functions
 const auth = {
     async signUp(email, password, name) {
@@ -348,17 +327,7 @@ async function handleSharedFile() {
 
         if (files && files.length > 0) {
             const sharedFile = files[0];
-            
-            // Check if user is logged in
-            const { data: { user } } = await window.supabase.auth.getUser();
-            
-            if (user) {
-                // User is logged in, show modal
-                showSharedFileModal(sharedFile);
-            } else {
-                // User is not logged in, show simple download page
-                showSharedFileDownloadPage(sharedFile);
-            }
+            showSharedFileModal(sharedFile);
         } else {
             showToast('Shared file not found', 'error');
         }
@@ -376,21 +345,6 @@ function showSharedFileModal(file) {
     const fileType = document.getElementById('sharedFileType');
     const downloadBtn = document.getElementById('sharedFileDownload');
     const archiveBtn = document.getElementById('sharedFileArchive');
-    const closeBtn = modal?.querySelector('.modal-close');
-    
-    // Check if all elements exist before proceeding
-    if (!modal || !fileName || !fileSize || !fileType || !downloadBtn || !archiveBtn) {
-        console.error('Shared file modal elements not found:', {
-            modal: !!modal,
-            fileName: !!fileName,
-            fileSize: !!fileSize,
-            fileType: !!fileType,
-            downloadBtn: !!downloadBtn,
-            archiveBtn: !!archiveBtn
-        });
-        showToast('Error loading shared file modal', 'error');
-        return;
-    }
     
     fileName.textContent = file.original_name;
     fileSize.textContent = fileUtils.formatFileSize(file.size);
@@ -398,13 +352,6 @@ function showSharedFileModal(file) {
     
     // Set up download button
     downloadBtn.onclick = () => downloadSharedFile(file);
-    
-    // Set up close button
-    if (closeBtn) {
-        closeBtn.onclick = () => {
-            modal.style.display = 'none';
-        };
-    }
     
     // Show/hide archive button based on file type
     if (fileUtils.isArchive({ name: file.original_name, type: file.type })) {
@@ -415,61 +362,6 @@ function showSharedFileModal(file) {
     }
     
     modal.style.display = 'flex';
-    
-    // Add click outside to close
-    modal.onclick = (e) => {
-        if (e.target === modal) {
-            modal.style.display = 'none';
-        }
-    };
-}
-
-// Show shared file download page for non-logged-in users
-function showSharedFileDownloadPage(file) {
-    // Hide all sections
-    document.querySelectorAll('.section').forEach(section => {
-        section.classList.remove('active');
-    });
-    
-    // Create or update the shared file download section
-    let sharedSection = document.getElementById('sharedFileSection');
-    if (!sharedSection) {
-        sharedSection = document.createElement('div');
-        sharedSection.id = 'sharedFileSection';
-        sharedSection.className = 'section active';
-        document.querySelector('main').appendChild(sharedSection);
-    }
-    
-    sharedSection.innerHTML = `
-        <div class="shared-file-container">
-            <div class="shared-file-card">
-                <div class="shared-file-header">
-                    <div class="shared-file-icon">
-                        <i class="${fileUtils.getFileIcon(file.type)}"></i>
-                    </div>
-                    <div class="shared-file-info">
-                        <h2>${file.original_name}</h2>
-                        <p>${fileUtils.formatFileSize(file.size)} • ${file.type}</p>
-                        <p class="shared-file-date">Uploaded: ${new Date(file.upload_date).toLocaleDateString()}</p>
-                    </div>
-                </div>
-                <div class="shared-file-actions">
-                    <button class="action-btn primary download-btn" onclick="downloadSharedFile(${JSON.stringify(file).replace(/"/g, '&quot;')})">
-                        <i class="fas fa-download"></i>
-                        Download File
-                    </button>
-                    ${fileUtils.isArchive({ name: file.original_name, type: file.type }) ? 
-                        `<button class="action-btn secondary" onclick="openArchiveContents(${file.id})">
-                            <i class="fas fa-archive"></i>
-                            View Contents
-                        </button>` : ''
-                    }
-                </div>
-            </div>
-        </div>
-    `;
-    
-    sharedSection.classList.add('active');
 }
 
 // Download shared file
@@ -497,7 +389,6 @@ async function downloadSharedFile(file) {
 // Initialize the application
 async function initializeApp() {
     try {
-        console.log('Initializing app...');
         console.log('Supabase initialized:', window.supabase);
         
         // Check for email verification in URL (when user clicks verification link)
@@ -527,11 +418,8 @@ async function initializeApp() {
         
         // Check authentication status
         const user = await auth.getCurrentUser();
-        console.log('Auth check - user:', user);
-        
         if (user) {
             currentUser = user;
-            console.log('User is logged in:', user.email);
             if (user.email_confirmed_at) {
                 uiUtils.updateUIForUser();
             } else {
@@ -539,7 +427,6 @@ async function initializeApp() {
                 showVerificationPending(user.email);
             }
         } else {
-            console.log('No user logged in - showing guest UI');
             uiUtils.updateUIForGuest();
         }
         
@@ -557,20 +444,10 @@ async function initializeApp() {
 
 // Set up event listeners
 function setupEventListeners() {
-    console.log('Setting up event listeners...');
-    
     // File input change
     const fileInput = document.getElementById('fileInput');
-    console.log('File input found:', fileInput);
     if (fileInput) {
         fileInput.addEventListener('change', handleFileSelect);
-        console.log('File input event listener added');
-        
-        // Test if file input is accessible
-        console.log('File input accept attribute:', fileInput.accept);
-        console.log('File input multiple attribute:', fileInput.multiple);
-    } else {
-        console.error('File input not found!');
     }
 
     // Search input
@@ -592,8 +469,6 @@ function setupEventListeners() {
         uploadArea.addEventListener('drop', handleDrop);
         uploadArea.addEventListener('dragleave', handleDragLeave);
     }
-    
-
 
     // Clipboard paste
     document.addEventListener('paste', handlePaste);
@@ -620,16 +495,6 @@ function setupEventListeners() {
 // Event handlers
 function handleFileSelect(event) {
     const files = Array.from(event.target.files);
-    console.log('Files selected:', files.length, files.map(f => f.name));
-    
-    if (files.length > 0) {
-        console.log('First file details:', {
-            name: files[0].name,
-            size: files[0].size,
-            type: files[0].type
-        });
-    }
-    
     uploadFiles(files);
 }
 
@@ -816,67 +681,20 @@ const bulkUtils = {
 
 // Upload files
 async function uploadFiles(files) {
-    console.log('uploadFiles called with:', files.length, 'files');
-    console.log('Current user:', currentUser);
-    
     if (!currentUser) {
-        console.log('No user logged in - cannot upload files');
         showToast('Please sign in to upload files', 'error');
-        // Switch to account section to prompt login
-        switchSection('account');
         return;
     }
-    
-    console.log('User is authenticated, proceeding with upload...');
 
     if (files.length === 0) return;
 
-    // Show progress bar
-    showUploadProgress();
-    
-    let uploadedCount = 0;
-    const totalFiles = files.length;
-
-    for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        
-        // Update progress before starting each file
-        updateUploadProgress(file, i, totalFiles);
-        
-        await uploadFile(file, i, totalFiles);
+    for (const file of files) {
+        await uploadFile(file);
     }
-
-    // Hide progress bar when done
-    hideUploadProgress();
-    
-    // Show success message
-    if (files.length === 1) {
-        showToast('File uploaded successfully! Redirecting to My Files...', 'success');
-    } else {
-        showToast(`${files.length} files uploaded successfully! Redirecting to My Files...`, 'success');
-    }
-    
-    // Reload files to show the new uploads
-    loadFiles();
-    
-    // Automatically navigate to My Files page
-    setTimeout(() => {
-        switchSection('files');
-        // Update navigation button state
-        document.querySelectorAll('.nav-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        const filesBtn = document.querySelector('[onclick="switchSection(\'files\')"]');
-        if (filesBtn) {
-            filesBtn.classList.add('active');
-        }
-    }, 1500); // Wait 1.5 seconds to show the success message
 }
 
 // Upload single file
-async function uploadFile(file, currentIndex = 0, totalFiles = 1) {
-    console.log('Uploading file:', file.name, 'Index:', currentIndex, 'Total:', totalFiles);
-    
+async function uploadFile(file) {
     const validation = fileUtils.validateFile(file);
     if (!validation.valid) {
         showToast(validation.error, 'error');
@@ -884,39 +702,18 @@ async function uploadFile(file, currentIndex = 0, totalFiles = 1) {
     }
 
     try {
-        // Update progress text to show current step
-        updateUploadStep('Preparing file...');
-        
         const timestamp = Date.now();
         const randomId = Math.random().toString(36).substring(2, 12);
         const fileExtension = file.name.split('.').pop();
         const fileName = `${timestamp}_${randomId}.${fileExtension}`;
-        
-        // Update progress to show uploading
-        updateUploadStep('Uploading to cloud storage...');
-        
-        // Simulate upload progress (since Supabase doesn't provide progress callbacks)
-        let uploadProgress = 0;
-        const progressInterval = setInterval(() => {
-            if (uploadProgress < 90) {
-                uploadProgress += Math.random() * 10;
-                updateUploadProgress(file, currentIndex, totalFiles, uploadProgress);
-            }
-        }, 200);
         
         // Upload file to Supabase Storage
         const { data: uploadData, error: uploadError } = await window.supabase.storage
             .from('uploads')
             .upload(fileName, file);
 
-        clearInterval(progressInterval);
-
         if (uploadError) throw uploadError;
 
-        // Update progress to show processing
-        updateUploadStep('Processing file...');
-        updateUploadProgress(file, currentIndex, totalFiles, 95);
-        
         // Get public URL
         const { data: urlData } = window.supabase.storage
             .from('uploads')
@@ -942,105 +739,12 @@ async function uploadFile(file, currentIndex = 0, totalFiles = 1) {
 
         if (insertError) throw insertError;
 
-        // Update progress to show completion
-        updateUploadStep('File uploaded successfully!');
-        updateUploadProgress(file, currentIndex, totalFiles, 100);
-        
+        showToast('File uploaded successfully!', 'success');
         return insertData[0];
     } catch (error) {
         console.error('Upload error:', error);
         showToast('Upload failed: ' + error.message, 'error');
         return null;
-    }
-}
-
-// Show upload progress bar
-function showUploadProgress() {
-    const progressBar = document.getElementById('uploadProgress');
-    if (progressBar) {
-        progressBar.style.display = 'block';
-        // Reset progress
-        updateUploadProgress(null, 0, 1);
-        updateUploadStep('Starting upload...');
-    }
-}
-
-// Hide upload progress bar
-function hideUploadProgress() {
-    const progressBar = document.getElementById('uploadProgress');
-    if (progressBar) {
-        progressBar.style.display = 'none';
-        // Reset progress
-        updateUploadProgress(null, 0, 1);
-    }
-}
-
-// Update upload progress
-function updateUploadProgress(file, currentIndex, totalFiles, uploadProgress = 0) {
-    const progressBar = document.getElementById('uploadProgress');
-    const progressFill = document.getElementById('progressFill');
-    const progressText = document.getElementById('uploadFileName');
-    const progressSize = document.getElementById('uploadFileSize');
-    const progressPercent = document.querySelector('.progress-text');
-    const progressHeader = document.querySelector('.progress-header h4');
-
-    if (!progressBar || !progressFill || !progressText || !progressSize || !progressPercent || !progressHeader) return;
-
-    if (file) {
-        // Update file info
-        progressText.textContent = file.name;
-        progressSize.textContent = fileUtils.formatFileSize(file.size);
-
-        // Update header to show current file progress
-        if (totalFiles > 1) {
-            progressHeader.textContent = `Uploading Files (${currentIndex + 1} of ${totalFiles})`;
-        } else {
-            progressHeader.textContent = 'Uploading File';
-        }
-
-        // Calculate progress percentage based on actual upload progress
-        let progress = 0;
-        if (uploadProgress > 0) {
-            // If we have actual upload progress, use it (0-100%)
-            progress = Math.min(100, uploadProgress);
-        } else {
-            // Otherwise, show file preparation progress (0-30%)
-            progress = Math.min(30, (currentIndex / totalFiles) * 30);
-        }
-
-        // Immediately start showing progress
-        progressFill.style.width = `${progress}%`;
-        progressPercent.textContent = `${Math.round(progress)}%`;
-
-        // Add animation to progress bar
-        progressFill.style.transition = 'width 1.5s ease-in-out';
-
-        // Add shimmer effect to progress bar
-        progressFill.style.background = 'linear-gradient(90deg, #ff6b35, #f7931e, #ff6b35)';
-        progressFill.style.backgroundSize = '200% 100%';
-        progressFill.style.animation = 'shimmer 2s infinite';
-    } else {
-        // Reset progress
-        progressFill.style.width = '0%';
-        progressPercent.textContent = '0%';
-        progressText.textContent = 'filename.ext';
-        progressSize.textContent = '0 KB';
-        progressHeader.textContent = 'Uploading Files';
-        progressFill.style.animation = 'none';
-    }
-}
-
-// Update upload step text
-function updateUploadStep(stepText) {
-    const progressText = document.getElementById('uploadFileName');
-    if (progressText) {
-        progressText.textContent = stepText;
-    }
-    
-    // Also update the progress header if it exists
-    const progressHeader = document.querySelector('.progress-header h4');
-    if (progressHeader) {
-        progressHeader.textContent = stepText;
     }
 }
 
@@ -1054,15 +758,8 @@ function renderFiles(filesToRender = currentFiles) {
         return;
     }
 
-    // Use DocumentFragment for better performance
-    const fragment = document.createDocumentFragment();
-    
-    filesToRender.forEach(file => {
-        const fileCard = document.createElement('div');
-        fileCard.className = `file-card ${isBulkSelectMode && selectedFiles.has(file.id) ? 'selected' : ''}`;
-        fileCard.dataset.fileId = file.id;
-        
-        fileCard.innerHTML = `
+    const filesHTML = filesToRender.map(file => `
+        <div class="file-card ${isBulkSelectMode && selectedFiles.has(file.id) ? 'selected' : ''}" data-file-id="${file.id}">
             ${isBulkSelectMode ? `
                 <div class="file-checkbox">
                     <input type="checkbox" ${selectedFiles.has(file.id) ? 'checked' : ''} 
@@ -1080,7 +777,7 @@ function renderFiles(filesToRender = currentFiles) {
             <div class="file-actions">
                 ${fileUtils.isArchive({ name: file.original_name, type: file.type }) ? 
                     `<button class="action-btn archive-btn" onclick="openArchiveContents(${file.id})" title="View Archive Contents">
-                        <i class="fas fa-archive"></i>
+                        <i class="fas fa-folder-open"></i>
                         <span class="btn-label">View Contents</span>
                     </button>` : ''
                 }
@@ -1097,69 +794,25 @@ function renderFiles(filesToRender = currentFiles) {
                     <span class="btn-label">Delete</span>
                 </button>
             </div>
-        `;
-        
-        fragment.appendChild(fileCard);
-    });
+        </div>
+    `).join('');
 
-    filesContainer.innerHTML = '';
-    filesContainer.appendChild(fragment);
+    filesContainer.innerHTML = filesHTML;
 }
 
 // Update statistics
 function updateStats() {
     const totalFiles = currentFiles.length;
     const totalStorage = currentFiles.reduce((sum, file) => sum + file.size, 0);
-    const totalDownloads = currentFiles.reduce((sum, file) => sum + (file.download_count || 0), 0);
-    const sharedFiles = currentFiles.filter(file => file.share_id).length;
     
-    // Update storage display (if elements exist)
-    const storageUsedElement = document.getElementById('storageUsed');
-    const storageFillElement = document.getElementById('storageFill');
+    // Update storage display
+    document.getElementById('storageUsed').textContent = fileUtils.formatFileSize(totalStorage);
+    const storagePercent = Math.min((totalStorage / (100 * 1024 * 1024)) * 100, 100);
+    document.getElementById('storageFill').style.width = `${storagePercent}%`;
     
-    if (storageUsedElement) {
-        storageUsedElement.textContent = fileUtils.formatFileSize(totalStorage);
-    }
-    
-    if (storageFillElement) {
-        const storagePercent = Math.min((totalStorage / (100 * 1024 * 1024)) * 100, 100);
-        storageFillElement.style.width = `${storagePercent}%`;
-    }
-    
-    // Update stats storage usage elements
-    const statsStorageUsedElement = document.getElementById('statsStorageUsed');
-    const statsStorageFillElement = document.getElementById('statsStorageFill');
-    
-    if (statsStorageUsedElement) {
-        statsStorageUsedElement.textContent = fileUtils.formatFileSize(totalStorage);
-    }
-    
-    if (statsStorageFillElement) {
-        const storagePercent = Math.min((totalStorage / (100 * 1024 * 1024)) * 100, 100);
-        statsStorageFillElement.style.width = `${storagePercent}%`;
-    }
-    
-    // Update stats cards (with null checks)
-    const totalFilesElement = document.getElementById('totalFiles');
-    const totalStorageElement = document.getElementById('totalStorage');
-    const totalDownloadsElement = document.getElementById('totalDownloads');
-    const totalSharesElement = document.getElementById('totalShares');
-    
-    if (totalFilesElement) {
-        totalFilesElement.textContent = totalFiles;
-    }
-    
-    if (totalStorageElement) {
-        totalStorageElement.textContent = fileUtils.formatFileSize(totalStorage);
-    }
-    
-    if (totalDownloadsElement) {
-        totalDownloadsElement.textContent = totalDownloads;
-    }
-    
-    if (totalSharesElement) {
-        totalSharesElement.textContent = sharedFiles;
-    }
+    // Update stats cards
+    document.getElementById('totalFiles').textContent = totalFiles;
+    document.getElementById('totalStorage').textContent = fileUtils.formatFileSize(totalStorage);
     
     // Update recent files
     const recentFiles = currentFiles.slice(0, 5);
@@ -1232,39 +885,17 @@ async function copyShareLinkFromCard(fileId) {
     const shareUrl = generateShareUrl(file.share_id);
     
     try {
-        // Try modern clipboard API first
-        if (navigator.clipboard && window.isSecureContext) {
-            await navigator.clipboard.writeText(shareUrl);
-            showToast('Share link copied to clipboard!', 'success');
-        } else {
-            // Fallback for older browsers or non-secure contexts
-            const textArea = document.createElement('textarea');
-            textArea.value = shareUrl;
-            textArea.style.position = 'fixed';
-            textArea.style.left = '-999999px';
-            textArea.style.top = '-999999px';
-            textArea.style.opacity = '0';
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            
-            try {
-                const successful = document.execCommand('copy');
-                if (successful) {
-                    showToast('Share link copied to clipboard!', 'success');
-                } else {
-                    showToast('Share link: ' + shareUrl, 'info');
-                }
-            } catch (err) {
-                console.error('execCommand failed:', err);
-                showToast('Share link: ' + shareUrl, 'info');
-            }
-            
-            document.body.removeChild(textArea);
-        }
+        await navigator.clipboard.writeText(shareUrl);
+        showToast('Share link copied to clipboard!', 'success');
     } catch (error) {
-        console.error('Copy failed:', error);
-        showToast('Share link: ' + shareUrl, 'info');
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = shareUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showToast('Share link copied to clipboard!', 'success');
     }
 }
 
@@ -1448,95 +1079,26 @@ function manualLoadFiles() {
     loadFiles();
 }
 
-function showToast(message, type = 'info', title = null, duration = 5000) {
+function showToast(message, type = 'info') {
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
-    
-    // Get appropriate icon for each type
-    const getIcon = (type) => {
-        switch(type) {
-            case 'success': return 'fas fa-check-circle';
-            case 'error': return 'fas fa-exclamation-circle';
-            case 'warning': return 'fas fa-exclamation-triangle';
-            case 'info': 
-            default: return 'fas fa-info-circle';
-        }
-    };
-    
-    // Get appropriate title if not provided
-    const getTitle = (type) => {
-        if (title) return title;
-        switch(type) {
-            case 'success': return 'Success!';
-            case 'error': return 'Error!';
-            case 'warning': return 'Warning!';
-            case 'info': 
-            default: return 'Info';
-        }
-    };
-    
     toast.innerHTML = `
         <div class="toast-icon">
-            <i class="${getIcon(type)}"></i>
+            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
         </div>
-        <div class="toast-content">
-            <div class="toast-title">${getTitle(type)}</div>
-            <div class="toast-message">${message}</div>
-        </div>
+        <div class="toast-message">${message}</div>
         <button class="toast-close" onclick="this.parentElement.remove()">
             <i class="fas fa-times"></i>
         </button>
-        <div class="toast-progress">
-            <div class="toast-progress-fill" style="width: 100%"></div>
-        </div>
     `;
-    
-    // Ensure toast is positioned in top right
-    toast.style.position = 'fixed';
-    toast.style.top = '20px';
-    toast.style.right = '20px';
-    toast.style.zIndex = '999999';
     
     document.body.appendChild(toast);
     
-    // Trigger animation
-    setTimeout(() => {
-        toast.classList.add('show');
-    }, 10);
-    
-    // Animate progress bar
-    const progressBar = toast.querySelector('.toast-progress-fill');
-    if (progressBar) {
-        setTimeout(() => {
-            progressBar.style.transition = `width ${duration}ms linear`;
-            progressBar.style.width = '0%';
-        }, 100);
-    }
-    
-    // Auto remove after duration
     setTimeout(() => {
         if (toast.parentElement) {
-            toast.style.transform = 'translateX(400px)';
-            setTimeout(() => {
-                if (toast.parentElement) {
-                    toast.remove();
-                }
-            }, 400);
+            toast.remove();
         }
-    }, duration);
-    
-    // Add click to dismiss functionality
-    toast.addEventListener('click', (e) => {
-        if (e.target.classList.contains('toast-close')) return;
-        if (toast.parentElement) {
-            toast.style.transform = 'translateX(400px)';
-            setTimeout(() => {
-                if (toast.parentElement) {
-                    toast.remove();
-                }
-            }, 400);
-        }
-    });
+    }, 5000);
 }
 
 // Redirect to login with pre-filled data
@@ -1597,11 +1159,6 @@ window.switchSection = function(sectionName) {
     if (activeBtn) {
         activeBtn.classList.add('active');
     }
-    
-    // Update statistics when switching to stats section
-    if (sectionName === 'stats') {
-        updateStats();
-    }
 };
 
 window.toggleBulkSelect = bulkUtils.toggleBulkSelect;
@@ -1627,18 +1184,6 @@ window.signUpWithGoogle = auth.signInWithGoogle;
 window.signOut = auth.signOut;
 window.editProfile = () => showToast('Profile editing coming soon!', 'info');
 window.togglePassword = togglePassword;
-
-// Test function for debugging
-window.testFileUpload = function() {
-    console.log('Testing file upload...');
-    const fileInput = document.getElementById('fileInput');
-    if (fileInput) {
-        console.log('File input found, triggering click...');
-        fileInput.click();
-    } else {
-        console.error('File input not found in test function');
-    }
-};
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', initializeApp);
